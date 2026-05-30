@@ -37,16 +37,6 @@ const Bounties = () => {
     }
   };
 
-  const handleAwardBounty = async (questionId, answerId) => {
-    try {
-      await api.post(`/bounties/${questionId}/award/${answerId}`);
-      toast.success('Bounty awarded!');
-      fetchBounties();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Error awarding bounty');
-    }
-  };
-
   if (loading) return <div className="text-center py-8">Loading...</div>;
 
   return (

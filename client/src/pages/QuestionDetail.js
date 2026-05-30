@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { FiArrowUp, FiArrowDown, FiCheck, FiMessageSquare, FiBookmark, FiFlag } from 'react-icons/fi';
+import { FiArrowUp, FiArrowDown, FiCheck, FiMessageSquare, FiBookmark } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const QuestionDetail = () => {
@@ -20,7 +20,7 @@ const QuestionDetail = () => {
 
   useEffect(() => {
     fetchQuestion();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchQuestion = async () => {
     try {

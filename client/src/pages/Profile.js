@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../utils/api';
-import { useAuth } from '../context/AuthContext';
-import { FiAward, FiMessageSquare, FiHeart, FiClock, FiEye, FiEdit } from 'react-icons/fi';
+import { FiAward, FiMessageSquare, FiEdit } from 'react-icons/fi';
 
 const Profile = () => {
   const { id } = useParams();
-  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
@@ -15,7 +13,7 @@ const Profile = () => {
 
   useEffect(() => {
     fetchProfile();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProfile = async () => {
     try {

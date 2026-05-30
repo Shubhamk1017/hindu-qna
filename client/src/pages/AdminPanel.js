@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { FiUsers, FiMessageSquare, FiTag, FiSettings, FiCheck, FiX, FiCpu } from 'react-icons/fi';
+import { FiUsers, FiMessageSquare, FiTag, FiSettings, FiCheck, FiCpu } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const AdminPanel = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [aiAnswers, setAiAnswers] = useState([]);
@@ -19,7 +19,7 @@ const AdminPanel = () => {
       return;
     }
     fetchData();
-  }, []);
+  }, [isAdmin]);
 
   const fetchData = async () => {
     try {

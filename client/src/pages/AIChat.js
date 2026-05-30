@@ -4,7 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { FiSend, FiTrash2, FiMessageSquare } from 'react-icons/fi';
+import { FiSend, FiMessageSquare } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const AIChat = () => {

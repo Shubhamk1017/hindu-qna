@@ -17,7 +17,7 @@ const GuruPortal = () => {
       return;
     }
     fetchDashboard();
-  }, []);
+  }, [isGuru]);
 
   const fetchDashboard = async () => {
     try {

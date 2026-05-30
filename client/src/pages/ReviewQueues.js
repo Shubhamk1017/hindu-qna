@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { useAuth } from '../context/AuthContext';
-import { FiCheck, FiX, FiClock } from 'react-icons/fi';
+import { FiCheck, FiX } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const ReviewQueues = () => {
-  const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeQueue, setActiveQueue] = useState('first_question');
@@ -20,7 +18,7 @@ const ReviewQueues = () => {
 
   useEffect(() => {
     fetchReviews();
-  }, [activeQueue]);
+  }, [activeQueue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchReviews = async () => {
     setLoading(true);

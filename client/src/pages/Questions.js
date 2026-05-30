@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
-import { FiFilter, FiClock, FiTrendingUp, FiMessageSquare } from 'react-icons/fi';
+import { FiClock, FiTrendingUp, FiMessageSquare } from 'react-icons/fi';
 
 const Questions = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -15,7 +15,7 @@ const Questions = () => {
 
   useEffect(() => {
     fetchQuestions();
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchQuestions = async () => {
     setLoading(true);
