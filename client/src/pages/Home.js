@@ -11,18 +11,14 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [questionsRes, tagsRes] = await Promise.all([
+        const [questionsRes, tagsRes, statsRes] = await Promise.all([
           api.get('/questions?sort=votes&limit=5'),
-          api.get('/tags?limit=10')
+          api.get('/tags?limit=10'),
+          api.get('/admin/public-stats')
         ]);
         setHotQuestions(questionsRes.data.questions);
         setTopTags(tagsRes.data.tags);
-        setStats({
-          questions: questionsRes.data.totalPages * 20,
-          users: 150,
-          answers: 500,
-          tags: tagsRes.data.totalPages * 50
-        });
+        setStats(statsRes.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       }

@@ -41,7 +41,7 @@ const AdminPanel = () => {
     try {
       await api.post(`/admin/ai-answers/${answerId}/verify`, { note });
       toast.success('AI answer verified!');
-      fetchData();
+      setAiAnswers(prev => prev.filter(a => a._id !== answerId));
     } catch (error) {
       toast.error('Error verifying AI answer');
     }
@@ -51,7 +51,7 @@ const AdminPanel = () => {
     try {
       await api.post(`/admin/ai-answers/${answerId}/reject`);
       toast.success('AI answer rejected');
-      fetchData();
+      setAiAnswers(prev => prev.filter(a => a._id !== answerId));
     } catch (error) {
       toast.error('Error rejecting AI answer');
     }
@@ -159,7 +159,6 @@ const AdminPanel = () => {
                     <th className="text-left py-3">Email</th>
                     <th className="text-left py-3">Role</th>
                     <th className="text-left py-3">Reputation</th>
-                    <th className="text-left py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -188,11 +187,6 @@ const AdminPanel = () => {
                         </select>
                       </td>
                       <td className="py-3">{u.reputation}</td>
-                      <td className="py-3">
-                        <button className="text-red-600 hover:text-red-700">
-                          <FiX size={18} />
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

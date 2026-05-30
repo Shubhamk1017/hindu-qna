@@ -1,10 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiSearch, FiMessageSquare, FiUser, FiLogOut } from 'react-icons/fi';
 
 const Navbar = () => {
   const { user, logout, isGuru, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <nav className="bg-orange-600 text-white shadow-lg">
@@ -43,7 +49,7 @@ const Navbar = () => {
                     </div>
                     <span>{user.name}</span>
                   </Link>
-                  <button onClick={logout} className="hover:text-orange-200">
+                  <button onClick={handleLogout} className="hover:text-orange-200">
                     <FiLogOut />
                   </button>
                 </div>

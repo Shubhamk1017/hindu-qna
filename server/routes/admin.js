@@ -6,6 +6,21 @@ const Answer = require('../models/Answer');
 const Tag = require('../models/Tag');
 const { auth, adminAuth } = require('../middleware/auth');
 
+// Public stats for homepage
+router.get('/public-stats', async (req, res) => {
+  try {
+    const stats = {
+      users: await User.countDocuments(),
+      questions: await Question.countDocuments(),
+      answers: await Answer.countDocuments({ isAIGenerated: false }),
+      tags: await Tag.countDocuments()
+    };
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get admin dashboard stats
 router.get('/stats', adminAuth, async (req, res) => {
   try {

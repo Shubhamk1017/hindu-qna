@@ -90,7 +90,7 @@ questionSchema.pre('save', function(next) {
 });
 
 questionSchema.virtual('voteScore').get(function() {
-  return this.upvotes.length - this.downvotes.length;
+  return (this.upvotes?.length || 0) - (this.downvotes?.length || 0);
 });
 
 questionSchema.set('toJSON', { virtuals: true });

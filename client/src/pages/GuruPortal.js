@@ -33,7 +33,13 @@ const GuruPortal = () => {
     try {
       await api.post(`/guru/verify/${answerId}`, { note });
       toast.success('Answer verified!');
-      fetchDashboard();
+      const verifiedAnswer = dashboard.pendingVerifications.find(a => a._id === answerId);
+      setDashboard(prev => ({
+        ...prev,
+        pendingVerifications: prev.pendingVerifications.filter(a => a._id !== answerId),
+        verifiedByMe: verifiedAnswer ? [{ ...verifiedAnswer, isVerifiedByGuru: true, verifiedAt: new Date().toISOString(), verificationNote: note }, ...prev.verifiedByMe] : prev.verifiedByMe,
+        stats: { ...prev.stats, pendingCount: Math.max(0, prev.stats.pendingCount - 1), verifiedCount: (prev.stats.verifiedCount || 0) + 1 }
+      }));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error verifying answer');
     }
@@ -43,7 +49,12 @@ const GuruPortal = () => {
     try {
       await api.post(`/guru/unverify/${answerId}`);
       toast.success('Verification removed');
-      fetchDashboard();
+      setDashboard(prev => ({
+        ...prev,
+        verifiedByMe: prev.verifiedByMe.filter(a => a._id !== answerId),
+        pendingVerifications: [...prev.pendingVerifications, prev.verifiedByMe.find(a => a._id === answerId)].filter(Boolean),
+        stats: { ...prev.stats, verifiedCount: Math.max(0, (prev.stats.verifiedCount || 0) - 1), pendingCount: (prev.stats.pendingCount || 0) + 1 }
+      }));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error removing verification');
     }

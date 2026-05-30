@@ -16,6 +16,7 @@ const QuestionDetail = () => {
   const [answerBody, setAnswerBody] = useState('');
   const [commentBody, setCommentBody] = useState('');
   const [showCommentForm, setShowCommentForm] = useState(null);
+  const [voting, setVoting] = useState(false);
 
   useEffect(() => {
     fetchQuestion();
@@ -25,6 +26,15 @@ const QuestionDetail = () => {
     try {
       const res = await api.get(`/questions/${id}`);
       setQuestion(res.data);
+
+      // Only increment view count once per session
+      const viewed = JSON.parse(localStorage.getItem('viewedQuestions') || '[]');
+      if (!viewed.includes(id)) {
+        await api.post(`/questions/${id}/view`);
+        viewed.push(id);
+        localStorage.setItem('viewedQuestions', JSON.stringify(viewed));
+        setQuestion(prev => ({ ...prev, views: (prev.views || 0) + 1 }));
+      }
     } catch (error) {
       toast.error('Error loading question');
     }
@@ -33,6 +43,8 @@ const QuestionDetail = () => {
 
   const handleVote = async (type, questionId = null, answerId = null) => {
     if (!user) return toast.error('Please login to vote');
+    if (voting) return;
+    setVoting(true);
     
     try {
       if (questionId) {
@@ -44,7 +56,11 @@ const QuestionDetail = () => {
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error voting');
     }
+    setTimeout(() => setVoting(false), 500);
   };
+
+  const isUpvoted = (item) => item.upvotes?.some(id => String(id) === String(user?._id));
+  const isDownvoted = (item) => item.downvotes?.some(id => String(id) === String(user?._id));
 
   const handleAccept = async (answerId) => {
     try {
@@ -137,14 +153,14 @@ const QuestionDetail = () => {
     <div className="max-w-4xl mx-auto">
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex">
-          <div className="flex flex-col items-center space-y-2 mr-6">
-            <button onClick={() => handleVote('upvote', question._id)} className="text-gray-400 hover:text-orange-600">
-              <FiArrowUp size={24} />
-            </button>
-            <span className="text-xl font-bold">{question.upvotes?.length - question.downvotes?.length || 0}</span>
-            <button onClick={() => handleVote('downvote', question._id)} className="text-gray-400 hover:text-red-600">
-              <FiArrowDown size={24} />
-            </button>
+            <div className="flex flex-col items-center space-y-2 mr-6">
+              <button onClick={() => handleVote('upvote', question._id)} className={`${isUpvoted(question) ? 'text-orange-600' : 'text-gray-400 hover:text-orange-600'}`}>
+                <FiArrowUp size={24} />
+              </button>
+              <span className="text-xl font-bold">{question.upvotes?.length - question.downvotes?.length || 0}</span>
+              <button onClick={() => handleVote('downvote', question._id)} className={`${isDownvoted(question) ? 'text-red-600' : 'text-gray-400 hover:text-red-600'}`}>
+                <FiArrowDown size={24} />
+              </button>
             <button className="text-gray-400 hover:text-orange-600 mt-2">
               <FiBookmark size={20} />
             </button>
@@ -229,11 +245,11 @@ const QuestionDetail = () => {
         <div key={answer._id} className={`bg-white rounded-lg shadow-md p-6 mb-4 ${answer.isAccepted ? 'border-2 border-green-500' : ''}`}>
           <div className="flex">
             <div className="flex flex-col items-center space-y-2 mr-6">
-              <button onClick={() => handleVote('upvote', null, answer._id)} className="text-gray-400 hover:text-orange-600">
+              <button onClick={() => handleVote('upvote', null, answer._id)} className={`${isUpvoted(answer) ? 'text-orange-600' : 'text-gray-400 hover:text-orange-600'}`}>
                 <FiArrowUp size={24} />
               </button>
               <span className="text-xl font-bold">{answer.upvotes?.length - answer.downvotes?.length || 0}</span>
-              <button onClick={() => handleVote('downvote', null, answer._id)} className="text-gray-400 hover:text-red-600">
+              <button onClick={() => handleVote('downvote', null, answer._id)} className={`${isDownvoted(answer) ? 'text-red-600' : 'text-gray-400 hover:text-red-600'}`}>
                 <FiArrowDown size={24} />
               </button>
               {answer.isAccepted && (

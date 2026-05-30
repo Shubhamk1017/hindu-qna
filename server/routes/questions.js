@@ -145,11 +145,17 @@ router.get('/:id', async (req, res) => {
 
     question.answers = filteredAnswers;
 
-    // Increment view count
-    question.views += 1;
-    await question.save();
-
     res.json(question);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Increment view count (called once per session)
+router.post('/:id/view', async (req, res) => {
+  try {
+    await Question.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -309,8 +315,8 @@ router.post('/:id/vote', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot vote on your own question' });
     }
 
-    const upvoteIndex = question.upvotes.indexOf(req.user._id);
-    const downvoteIndex = question.downvotes.indexOf(req.user._id);
+    const upvoteIndex = question.upvotes.findIndex(id => id.toString() === req.user._id.toString());
+    const downvoteIndex = question.downvotes.findIndex(id => id.toString() === req.user._id.toString());
 
     if (type === 'upvote') {
       if (upvoteIndex === -1) {
@@ -318,8 +324,8 @@ router.post('/:id/vote', auth, async (req, res) => {
         if (downvoteIndex !== -1) {
           question.downvotes.splice(downvoteIndex, 1);
         }
-        // Add reputation to author
-        await User.findByIdAndUpdate(question.author, { $inc: { reputation: 5 } });
+      } else {
+        question.upvotes.splice(upvoteIndex, 1);
       }
     } else if (type === 'downvote') {
       if (downvoteIndex === -1) {
@@ -327,8 +333,8 @@ router.post('/:id/vote', auth, async (req, res) => {
         if (upvoteIndex !== -1) {
           question.upvotes.splice(upvoteIndex, 1);
         }
-        // Remove reputation from author
-        await User.findByIdAndUpdate(question.author, { $inc: { reputation: -2 } });
+      } else {
+        question.downvotes.splice(downvoteIndex, 1);
       }
     }
 

@@ -54,7 +54,7 @@ const Login = () => {
             onClick={() => setIsGuruLogin(true)}
             className={`flex-1 py-2 ${isGuruLogin ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-500'}`}
           >
-            Guru Login
+            Guru / Admin Login
           </button>
         </div>
 

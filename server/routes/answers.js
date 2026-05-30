@@ -7,9 +7,7 @@ const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
 // Create answer - only gurus/scholars/admins can post
-router.post('/:questionId', auth, [
-  body('body').trim().isLength({ min: 30 })
-], async (req, res) => {
+router.post('/:questionId', auth, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -125,8 +123,8 @@ router.post('/:id/vote', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot vote on your own answer' });
     }
 
-    const upvoteIndex = answer.upvotes.indexOf(req.user._id);
-    const downvoteIndex = answer.downvotes.indexOf(req.user._id);
+    const upvoteIndex = answer.upvotes.findIndex(id => id.toString() === req.user._id.toString());
+    const downvoteIndex = answer.downvotes.findIndex(id => id.toString() === req.user._id.toString());
 
     if (type === 'upvote') {
       if (upvoteIndex === -1) {
@@ -134,7 +132,8 @@ router.post('/:id/vote', auth, async (req, res) => {
         if (downvoteIndex !== -1) {
           answer.downvotes.splice(downvoteIndex, 1);
         }
-        await User.findByIdAndUpdate(answer.author, { $inc: { reputation: 10 } });
+      } else {
+        answer.upvotes.splice(upvoteIndex, 1);
       }
     } else if (type === 'downvote') {
       if (downvoteIndex === -1) {
@@ -142,7 +141,8 @@ router.post('/:id/vote', auth, async (req, res) => {
         if (upvoteIndex !== -1) {
           answer.upvotes.splice(upvoteIndex, 1);
         }
-        await User.findByIdAndUpdate(answer.author, { $inc: { reputation: -2 } });
+      } else {
+        answer.downvotes.splice(downvoteIndex, 1);
       }
     }
 
