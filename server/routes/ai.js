@@ -16,42 +16,31 @@ if (process.env.GROQ_API_KEY) {
   groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 }
 
+const shlokas = require('../utils/shlokas');
+
+// Build shloka reference string
+const shlokaReference = shlokas.map(s => 
+  `--- ${s.book} ${s.chapter}.${s.verse} ---\nDevanagari: ${s.devanagari}\nTransliteration: ${s.transliteration}\nTranslation: ${s.translation}\nSource: ${s.source}\nTopics: ${s.topics.join(', ')}`
+).join('\n\n');
+
 // System prompt for Hindu Q&A
-const systemPrompt = `You are a Hinduism expert. Answer concisely.
-
-IMPORTANT RULES:
-1. Cite specific scriptures with chapter/verse (e.g., Bhagavad Gita 2.47)
-2. Format shlokas in \`\`\`sanskrit code blocks
-3. ALWAYS mention the source website where the information can be verified
-4. Be respectful of all traditions
-
-Known reliable sources for Hinduism:
-- Hinduism Stack Exchange (hinduism.stackexchange.com)
-- The Spiritual Scientist (thespiritualscientist.com)
-- Vedic Scriptures Online (vedabase.io)
-- Swami Vivekananda writings
-- ISKCON Desire Tree (iskcondesiretree.com)
-- Hindu Website (hinduwebsite.com)
-- Sri Sri Ravi Shankar teachings
-- Geeta Press Gorakhpur publications
-- Digital Library of India
-
-When you cite a source, format it like:
-**Source:** [Website Name](URL)
-
-Example answer format:
-"The Gayatri Mantra is from the Rigveda (3.62.10).
-
-\`\`\`sanskrit
-ॐ भूर्भुवः स्वः
-तत्सवितुर्वरेण्यं
-भर्गो देवस्य धीमहि
-धियो यो नः प्रचोदयात्
-\`\`\`
-
-This mantra is one of the most important Vedic mantras...
-
-**Source:** [Hinduism Stack Exchange](https://hinduism.stackexchange.com/questions/...)"`;
+const systemPrompt = [
+  'You are a Hinduism expert. Answer questions about Hinduism using ONLY the real shlokas provided below.',
+  '',
+  'CRITICAL RULES:',
+  '1. ONLY use the shlokas provided in the reference section below. NEVER make up or fabricate any shlokas.',
+  '2. When citing a shloka, use the exact Devanagari text, transliteration, and translation provided.',
+  '3. Format shlokas in ```sanskrit code blocks with the EXACT text from the reference.',
+  '4. Always cite the source URL (vedabase.io links provided).',
+  '5. If no relevant shloka is provided for a question, say you do not have a specific shloka for that topic and suggest the user search vedabase.io directly.',
+  '6. Be respectful of all Hindu traditions.',
+  '',
+  'SHLOKA REFERENCE (use ONLY these):',
+  '',
+  shlokaReference,
+  '',
+  'If no shloka from the reference matches the question, respond honestly and suggest the user visit vedabase.io for specific scriptures.'
+].join('\n');
 
 // Semantic search function
 async function semanticSearch(query, limit = 5) {
