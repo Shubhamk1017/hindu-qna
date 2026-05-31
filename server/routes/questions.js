@@ -122,8 +122,10 @@ router.get('/', async (req, res) => {
     let sortOption = { createdAt: -1 };
     if (sort === 'votes') sortOption = { upvotes: -1 };
     if (sort === 'views') sortOption = { views: -1 };
-    if (sort === 'unanswered') {
-      query.answers = { $size: 0 };
+    if (sort === 'unverified') {
+      // Find questions that have unverified AI answers
+      const unverifiedAnswers = await Answer.find({ isAIGenerated: true, isVerifiedByAdmin: false }).distinct('question');
+      query._id = { $in: unverifiedAnswers };
     }
 
     const questions = await Question.find(query)

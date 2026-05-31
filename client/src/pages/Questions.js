@@ -65,10 +65,10 @@ const Questions = () => {
                 <FiTrendingUp className="inline mr-1" /> Votes
               </button>
               <button
-                onClick={() => handleSort('unanswered')}
-                className={`px-4 py-2 rounded-lg ${currentSort === 'unanswered' ? 'bg-orange-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+                onClick={() => handleSort('unverified')}
+                className={`px-4 py-2 rounded-lg ${currentSort === 'unverified' ? 'bg-orange-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
               >
-                <FiMessageSquare className="inline mr-1" /> Unanswered
+                <FiMessageSquare className="inline mr-1" /> Unverified
               </button>
             </div>
           </div>

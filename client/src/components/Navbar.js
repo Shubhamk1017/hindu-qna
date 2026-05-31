@@ -23,7 +23,6 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/questions" className="hover:text-orange-200">Questions</Link>
             <Link to="/tags" className="hover:text-orange-200">Tags</Link>
-            <Link to="/users" className="hover:text-orange-200">Users</Link>
             <Link to="/chat" className="hover:text-orange-200 flex items-center gap-1">
               <FiMessageSquare /> AI Chat
             </Link>
