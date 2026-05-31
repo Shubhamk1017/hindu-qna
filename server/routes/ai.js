@@ -18,13 +18,8 @@ if (process.env.GROQ_API_KEY) {
 
 const shlokas = require('../utils/shlokas');
 
-// Build shloka reference string
-const shlokaReference = shlokas.map(s => 
-  `--- ${s.book} ${s.chapter}.${s.verse} ---\nDevanagari: ${s.devanagari}\nTransliteration: ${s.transliteration}\nTranslation: ${s.translation}\nSource: ${s.source}\nTopics: ${s.topics.join(', ')}`
-).join('\n\n');
-
-// System prompt for Hindu Q&A
-const systemPrompt = [
+// System prompt base for Hindu Q&A
+const systemPromptBase = [
   'You are a Hinduism expert. Answer questions about Hinduism using ONLY the real shlokas provided below.',
   '',
   'CRITICAL RULES:',
@@ -33,14 +28,17 @@ const systemPrompt = [
   '3. Format shlokas in ```sanskrit code blocks with the EXACT text from the reference.',
   '4. Always cite the source URL (vedabase.io links provided).',
   '5. If no relevant shloka is provided for a question, say you do not have a specific shloka for that topic and suggest the user search vedabase.io directly.',
-  '6. Be respectful of all Hindu traditions.',
-  '',
-  'SHLOKA REFERENCE (use ONLY these):',
-  '',
-  shlokaReference,
-  '',
-  'If no shloka from the reference matches the question, respond honestly and suggest the user visit vedabase.io for specific scriptures.'
+  '6. Be respectful of all Hindu traditions.'
 ].join('\n');
+
+// Get relevant shlokas for a message
+function getRelevantShlokas(message) {
+  const words = message.toLowerCase().split(/\s+/);
+  const relevant = shlokas.filter(s =>
+    s.topics.some(t => words.some(w => t.toLowerCase().includes(w) || w.includes(t.toLowerCase())))
+  ).slice(0, 5);
+  return relevant.length > 0 ? relevant : shlokas.slice(0, 3);
+}
 
 // Semantic search function
 async function semanticSearch(query, limit = 5) {
@@ -89,6 +87,13 @@ router.post('/chat', auth, async (req, res) => {
 
     let assistantMessage;
 
+    // Build dynamic system prompt with relevant shlokas
+    const relevantShlokas = getRelevantShlokas(message);
+    const shlokaRef = relevantShlokas.map(s =>
+      `--- ${s.book} ${s.chapter}.${s.verse} ---\nDevanagari: ${s.devanagari}\nTransliteration: ${s.transliteration}\nTranslation: ${s.translation}\nSource: ${s.source}\nTopics: ${s.topics.join(', ')}`
+    ).join('\n\n');
+    const systemPrompt = systemPromptBase + '\n\nSHLOKA REFERENCE (use ONLY these):\n\n' + shlokaRef;
+
     const messages = [
       { role: 'system', content: systemPrompt + context },
       ...chat.messages.slice(-4).map(m => ({ role: m.role, content: m.content }))
@@ -99,8 +104,8 @@ router.post('/chat', auth, async (req, res) => {
       try {
         const completion = await groq.chat.completions.create({
           messages,
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 4000,
+          model: 'llama-3.1-8b-instant',
+          max_tokens: 2000,
           temperature: 0.7
         });
         assistantMessage = completion.choices[0].message.content;
