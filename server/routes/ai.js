@@ -174,8 +174,11 @@ router.post('/chat', auth, async (req, res) => {
 
     // Build messages with RAG context
     const verseContext = buildVerseContext(verses);
+    const fullSystemPrompt = systemPrompt + verseContext + communityContext;
+    console.log('System prompt length:', fullSystemPrompt.length, 'chars');
+    console.log('Verses found:', verses.length);
     const messages = [
-      { role: 'system', content: systemPrompt + verseContext + communityContext },
+      { role: 'system', content: fullSystemPrompt },
       ...chat.messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
     ];
 
@@ -191,6 +194,7 @@ router.post('/chat', auth, async (req, res) => {
         assistantMessage = completion.choices[0].message.content;
       } catch (groqError) {
         console.error('Groq API error:', groqError.message);
+        console.error('Groq error details:', JSON.stringify(groqError, null, 2));
       }
     }
 
@@ -216,6 +220,7 @@ router.post('/chat', auth, async (req, res) => {
         assistantMessage = result.response.text();
       } catch (geminiError) {
         console.error('Gemini API error:', geminiError.message);
+        console.error('Gemini error details:', JSON.stringify(geminiError, null, 2));
       }
     }
 
