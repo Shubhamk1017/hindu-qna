@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd client && npm install && npm run build",
+  "outputDirectory": "client/build",
+  "framework": "create-react-app",
+  "rewrites": [
+    { "source": "/((?!static|favicon.ico|manifest.json|logo192.png|logo512.png|robots.txt).*)", "destination": "/index.html" }
+  ]
+}
