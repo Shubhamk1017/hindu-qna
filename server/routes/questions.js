@@ -1,44 +1,120 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const { MongoClient } = require('mongodb');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const Tag = require('../models/Tag');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
-// AI answer generation function
+// ─── MongoDB connection for vedabase database ────────────────────────────────
+let vedabaseClient;
+let vedabaseDb;
+
+async function getVedabaseDB() {
+  if (!vedabaseDb) {
+    vedabaseClient = new MongoClient(process.env.MONGODB_URI);
+    await vedabaseClient.connect();
+    vedabaseDb = vedabaseClient.db('vedabase');
+  }
+  return vedabaseDb;
+}
+
+// ─── Search verses from MongoDB (RAG) ────────────────────────────────────────
+async function searchVerses(query, limit = 5) {
+  try {
+    const db = await getVedabaseDB();
+    const collection = db.collection('verses');
+
+    const results = await collection
+      .find(
+        { $text: { $search: query } },
+        {
+          projection: {
+            score: { $meta: 'textScore' },
+            book: 1, chapter: 1, verse: 1, canto: 1, part: 1,
+            translation: 1, purport: 1, sanskrit: 1, iast: 1,
+            url: 1,
+          },
+        }
+      )
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(limit)
+      .toArray();
+
+    if (results.length > 0) return results;
+
+    const regexResults = await collection
+      .find({
+        $or: [
+          { translation: { $regex: query, $options: 'i' } },
+          { purport: { $regex: query, $options: 'i' } },
+        ],
+      })
+      .limit(limit)
+      .toArray();
+
+    return regexResults;
+  } catch (err) {
+    console.error('Vedabase search error:', err.message);
+    return [];
+  }
+}
+
+// ─── Format verse reference ──────────────────────────────────────────────────
+function verseLabel(v) {
+  if (v.book === 'bg') return `Bhagavad Gita ${v.chapter}.${v.verse}`;
+  if (v.book === 'sb') return `Srimad Bhagavatam ${v.canto}.${v.chapter}.${v.verse}`;
+  if (v.book === 'cc') return `Caitanya-caritamrta ${v.part} ${v.chapter}.${v.verse}`;
+  if (v.book === 'iso') return `Sri Isopanishad Mantra ${v.mantra || v.verse}`;
+  if (v.book === 'noi') return `Nectar of Instruction ${v.verse}`;
+  return v.pageTitle || v.url;
+}
+
+// ─── Build context block from verses ─────────────────────────────────────────
+function buildVerseContext(verses) {
+  if (verses.length === 0) return '';
+
+  return '\n\n---\nRelevant scripture from vedabase.io:\n\n' +
+    verses.map((v) => {
+      const label = verseLabel(v);
+      return [
+        `[${label}]`,
+        v.sanskrit ? `Sanskrit: ${v.sanskrit}` : '',
+        v.iast ? `Transliteration: ${v.iast}` : '',
+        v.translation ? `Translation: ${v.translation}` : '',
+        v.purport ? `Purport (excerpt): ${v.purport.slice(0, 600)}...` : '',
+        `Source: ${v.url}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    })
+    .join('\n\n');
+}
+
+// AI answer generation function using MongoDB RAG
 async function generateAIAnswer(questionId, title, body) {
   try {
-    const shlokas = require('../utils/shlokas');
-    
-    // Only include shlokas relevant to the question
-    const questionWords = (title + ' ' + body).toLowerCase().split(/\s+/);
-    const relevantShlokas = shlokas.filter(s => 
-      s.topics.some(t => questionWords.some(w => t.toLowerCase().includes(w) || w.includes(t.toLowerCase())))
-    ).slice(0, 5);
-    
-    // If no relevant shlokas, include first 3 as general reference
-    const shlokasToShow = relevantShlokas.length > 0 ? relevantShlokas : shlokas.slice(0, 3);
-    
-    const shlokaRef = shlokasToShow.map(s => 
-      `--- ${s.book} ${s.chapter}.${s.verse} ---\nDevanagari: ${s.devanagari}\nTransliteration: ${s.transliteration}\nTranslation: ${s.translation}\nSource: ${s.source}\nTopics: ${s.topics.join(', ')}`
-    ).join('\n\n');
+    const query = title + ' ' + body;
+    const verses = await searchVerses(query, 5);
+    const verseContext = buildVerseContext(verses);
 
     const prompt = [
-      'You are a Hinduism expert. Answer this question concisely.',
+      'You are a knowledgeable Hinduism expert and spiritual teacher. Answer this question thoroughly.',
       '',
-      'CRITICAL RULES:',
-      '1. ONLY use the shlokas provided below. NEVER fabricate shlokas.',
-      '2. Format shlokas in ```sanskrit code blocks with EXACT text from reference.',
-      '3. Always cite the vedabase.io source URL.',
-      '4. If no relevant shloka exists, say so honestly.',
+      'GUIDELINES:',
+      '1. Answer the question comprehensively using your knowledge of Hindu scriptures.',
+      '2. When a relevant shloka is provided below, include it with exact Sanskrit text, transliteration, and translation in a ```sanskrit code block.',
+      '3. Always cite the vedabase.io source URL when using a provided shloka.',
+      '4. If no provided shloka is directly relevant, still answer fully from your knowledge.',
+      '5. Be respectful, accurate, and helpful.',
       '',
       `Question: ${title}`,
       `Details: ${body}`,
       '',
-      'SHLOKA REFERENCE (use ONLY these):',
-      shlokaRef
+      'SCRIPTURE REFERENCE (include when relevant):',
+      verseContext || 'No specific verses found in the database for this topic. Answer from your general knowledge.'
     ].join('\n');
 
     let aiMessage = '';
@@ -81,7 +157,7 @@ async function generateAIAnswer(questionId, title, body) {
       author: '6a1a933ab71040abda4679d1', // System/AI user
       question: questionId,
       isAIGenerated: true,
-      aiModel: 'gemini-2.5-flash',
+      aiModel: 'groq-llama-3.1-8b',
       isVerifiedByAdmin: false
     });
 
@@ -155,7 +231,7 @@ router.get('/:id', async (req, res) => {
     if (token) {
       try {
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'hindu-qna-secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.userId;
       } catch (e) {}
     }
@@ -347,9 +423,16 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // Vote on question
-router.post('/:id/vote', auth, async (req, res) => {
+router.post('/:id/vote', auth, [
+  body('type').isIn(['upvote', 'downvote']).withMessage('Vote type must be upvote or downvote')
+], async (req, res) => {
   try {
-    const { type } = req.body; // 'upvote' or 'downvote'
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { type } = req.body;
     const question = await Question.findById(req.params.id);
     
     if (!question) {
