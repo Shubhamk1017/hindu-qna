@@ -72,6 +72,34 @@ function verseLabel(v) {
   return v.pageTitle || v.url;
 }
 
+// ─── Auto-tag question using AI ─────────────────────────────────────────────
+const VALID_TAGS = ['bhagavad-gita', 'srimad-bhagavatam', 'dharma', 'karma', 'yoga', 'meditation', 'vedanta', 'worship', 'mantras', 'philosophy', 'festivals', 'deities'];
+
+async function autoTagQuestion(title, body) {
+  const text = `${title} ${body}`.toLowerCase();
+  const matched = [];
+
+  // Scriptural references
+  if (/bhagavad\s*gita|gita|krishna.*arjuna|chapter.*verse/i.test(text)) matched.push('bhagavad-gita');
+  if (/bhagavatam|bhagavata|srimad|purana/i.test(text)) matched.push('srimad-bhagavatam');
+
+  // Core topics
+  if (/\bdharma\b|duty|righteous|morals?|ethics?|varna|ashrama/i.test(text)) matched.push('dharma');
+  if (/\bkarma\b|action.*consequence|fruitive|works?/i.test(text)) matched.push('karma');
+  if (/\byoga\b|asana|pranayama|patanjali|hatha/i.test(text)) matched.push('yoga');
+  if (/\bmeditat|dhyana|contemplat|mindful/i.test(text)) matched.push('meditation');
+  if (/\bvedanta\b|brahman|atman|advaita|vishishtadvaita|shankara/i.test(text)) matched.push('vedanta');
+  if (/\bworship|puja|ritual|ceremony|offering|archana/i.test(text)) matched.push('worship');
+  if (/\bmantra|chant|japa|gayatri|om\b|hare krishna/i.test(text)) matched.push('mantras');
+  if (/\bphilosophy|sankhya|nyaya|vaisheshika|mimamsa/i.test(text)) matched.push('philosophy');
+  if (/\bfestival|diwali|holi|navratri|ekadashi|janmashtami/i.test(text)) matched.push('festivals');
+  if (/\bdeity|god|goddess|vishnu|shiva|rama|krishna|lakshmi|saraswati/i.test(text)) matched.push('deities');
+
+  // Fallback: at least one tag
+  if (matched.length === 0) matched.push('philosophy');
+  return matched.slice(0, 3);
+}
+
 // ─── Build context block from verses ─────────────────────────────────────────
 function buildVerseContext(verses) {
   if (verses.length === 0) return '';
@@ -286,7 +314,7 @@ router.post('/:id/view', async (req, res) => {
 router.post('/', auth, [
   body('title').trim().isLength({ min: 15, max: 300 }),
   body('body').optional().trim(),
-  body('tags').isArray({ min: 1, max: 5 })
+  body('tags').optional().isArray({ min: 1, max: 5 })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -294,11 +322,16 @@ router.post('/', auth, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, body = '', tags } = req.body;
+    const { title, body = '', tags: userTags } = req.body;
+
+    // Auto-tag if user didn't provide tags, or use user tags
+    const tagNames = (userTags && userTags.length > 0) 
+      ? userTags 
+      : await autoTagQuestion(title, body);
 
     // Find or create tags
     const tagIds = [];
-    for (const tagName of tags) {
+    for (const tagName of tagNames) {
       let tag = await Tag.findOne({ name: tagName.toLowerCase() });
       if (!tag) {
         tag = new Tag({ name: tagName.toLowerCase() });
@@ -359,11 +392,10 @@ router.put('/:id', auth, async (req, res) => {
       for (const tagId of question.tags) {
         const tag = await Tag.findById(tagId);
         if (tag) {
-          tag.count -= 1;
+          tag.count = Math.max(0, (tag.count || 1) - 1);
           await tag.save();
         }
       }
-      
       const tagIds = [];
       for (const tagName of tags) {
         let tag = await Tag.findOne({ name: tagName.toLowerCase() });
@@ -384,6 +416,57 @@ router.put('/:id', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// ─── Guru/Admin: edit tags on a question ─────────────────────────────────────
+router.put('/:id/tags', auth, async (req, res) => {
+  try {
+    const { tags } = req.body;
+    if (!tags || !Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ message: 'Tags array required' });
+    }
+
+    const question = await Question.findById(req.params.id);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    // Only guru, acharya, admin can edit tags
+    if (!['guru', 'acharya', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Only verified experts can edit tags' });
+    }
+
+    // Decrement old tags
+    for (const tagId of question.tags) {
+      const tag = await Tag.findById(tagId);
+      if (tag) {
+        tag.count = Math.max(0, (tag.count || 1) - 1);
+        await tag.save();
+      }
+    }
+
+    // Set new tags
+    const tagIds = [];
+    for (const tagName of tags) {
+      let tag = await Tag.findOne({ name: tagName.toLowerCase() });
+      if (!tag) {
+        tag = new Tag({ name: tagName.toLowerCase() });
+        await tag.save();
+      }
+      tag.count += 1;
+      await tag.save();
+      tagIds.push(tag._id);
+    }
+
+    question.tags = tagIds;
+    await question.save();
+
+    const populated = await Question.findById(question._id).populate('tags', 'name');
+    res.json({ message: 'Tags updated', tags: populated.tags });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 
 // Delete question
 router.delete('/:id', auth, async (req, res) => {

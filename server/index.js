@@ -77,6 +77,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/bounties', require('./routes/bounties'));
+app.use('/api/activity', require('./routes/activity'));
 
 // Health check
 app.get('/api/health', (req, res) => {

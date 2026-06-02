@@ -3,42 +3,33 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 
 const tagDescriptions = {
-  'vedas': 'The oldest scriptures of Hinduism, including Rigveda, Samaveda, Yajurveda, and Atharvaveda.',
-  'upanishads': 'Philosophical texts forming the basis of Vedanta philosophy, exploring the nature of Brahman and Atman.',
-  'bhagavad-gita': 'A 700-verse Hindu scripture that is part of the epic Mahabharata, containing a conversation between Lord Krishna and Arjuna.',
-  'puranas': 'A vast genre of Indian literature about legends, traditional history, and cosmology.',
-  'deities': 'Divine beings worshipped in Hinduism including Brahma, Vishnu, Shiva, Devi, and many others.',
-  'rituals': 'Sacred ceremonies and practices performed in Hinduism, including puja, homa, and samskaras.',
-  'mantras': 'Sacred sounds, syllables, or phrases used in prayer and meditation, like Om and Gayatri Mantra.',
-  'festivals': 'Hindu celebrations including Diwali, Holi, Navaratri, Ganesh Chaturthi, and more.',
-  'philosophy': 'Hindu philosophical schools including Vedanta, Yoga, Samkhya, Nyaya, Vaisheshika, and Mimamsa.',
-  'yoga': 'Physical, mental, and spiritual practices for self-realization and union with the divine.',
-  'karma': 'The law of cause and effect where actions determine future consequences.',
-  'dharma': 'Righteousness, duty, ethics, and the cosmic order that sustains the universe.',
-  'moksha': 'Liberation from the cycle of birth and death, the ultimate goal of Hindu spiritual practice.',
-  'samskaras': 'Sacred rites of passage marking important life events from birth to death.',
-  'temple': 'Sacred places of worship in Hinduism, housing deities and serving as community centers.',
-  'scripture': 'Holy texts and writings considered sacred in Hinduism.',
-  'avatars': 'Divine incarnations of deities, particularly the ten avatars of Lord Vishnu.',
-  'worship': 'Devotional practices and offerings made to deities.',
-  'meditation': 'Dhyana - practices for mental concentration and spiritual awareness.',
-  'diet': 'Hindu dietary practices including vegetarianism and fasting traditions.',
-  'sects': 'Different Hindu traditions and denominations like Vaishnavism, Shaivism, and Shaktism.',
-  'vedanta': 'A school of Hindu philosophy based on the Upanishads, Brahma Sutras, and Bhagavad Gita.',
-  'sanskrit': 'The ancient sacred language of Hinduism in which most scriptures are written.',
-  'guru': 'A spiritual teacher or guide who leads disciples on the path of spiritual evolution.',
-  ' caste': 'The traditional social classification system in Hindu society.',
-  'diwali': 'The festival of lights celebrating the victory of good over evil.',
-  'holi': 'The festival of colors celebrating spring, love, and the triumph of good over evil.',
-  'ramayana': 'One of the two major Sanskrit epics of ancient India, telling the story of Lord Rama.',
-  'mahabharata': 'One of the two major Sanskrit epics, the longest epic poem ever written.',
-  'om': 'The sacred sound and spiritual symbol in Hinduism, representing Brahman.',
-  'chakras': 'Energy centers in the subtle body described in yogic and tantric traditions.',
-  'puja': 'A worship ritual of honoring deities with offerings and prayers.',
-  'homam': 'A fire ritual or sacrifice performed in Hinduism for various purposes.',
-  'astrology': 'Jyotish Shastra - Hindu system of astrology and astronomy.',
-  'ayurveda': 'Traditional Indian system of medicine and holistic healing.',
-  'default': 'A topic related to Hinduism, Sanatan Dharma, and its practices.'
+  'bhagavad-gita': 'The sacred dialogue between Lord Krishna and Arjuna on the battlefield of Kurukshetra, covering dharma, karma, yoga, and devotion.',
+  'srimad-bhagavatam': 'The Bhagavata Purana — detailing the pastimes and activities of Vishnu and his devotees.',
+  'dharma': 'Duty, righteousness, and the moral law that sustains the universe.',
+  'karma': 'The law of cause and effect — how actions shape our destiny.',
+  'yoga': 'Spiritual practices and discipline for union with the divine.',
+  'meditation': 'Dhyana — practices for mental concentration and spiritual awareness.',
+  'vedanta': 'Vedantic philosophy exploring the nature of Brahman, Atman, and ultimate reality.',
+  'worship': 'Puja, rituals, and devotional practices offered to deities.',
+  'mantras': 'Sacred sounds, syllables, and chants used in prayer and meditation.',
+  'philosophy': 'Hindu philosophical schools — Vedanta, Sankhya, Yoga, Nyaya, and more.',
+  'festivals': 'Hindu celebrations including Diwali, Holi, Navaratri, and Ekadashi.',
+  'deities': 'Gods, goddesses, and divine forms worshipped in Hinduism.',
+};
+
+const iconMap = {
+  'bhagavad-gita': '📖',
+  'srimad-bhagavatam': '📚',
+  'dharma': '⚖️',
+  'karma': '🔄',
+  'yoga': '🧘',
+  'meditation': '🧘‍♂️',
+  'vedanta': '🕉️',
+  'worship': '🙏',
+  'mantras': '🎵',
+  'philosophy': '💭',
+  'festivals': '🎉',
+  'deities': '🔱',
 };
 
 const Tags = () => {
@@ -60,58 +51,67 @@ const Tags = () => {
     setLoading(false);
   };
 
-  const filteredTags = tags.filter(tag => 
+  const filteredTags = tags.filter(tag =>
     tag.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) return <div className="text-center py-8">Loading...</div>;
+  if (loading) return <div className="text-center py-12 text-gray-400">Loading...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Tags</h1>
-        <p className="text-gray-500">{tags.length} tags</p>
-      </div>
-      
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <p className="text-sm text-gray-600">
-          A tag is a keyword or label that categorizes your question with other, similar questions. 
-          Using the right tags makes it easier for others to find and answer your question.
+    <div className="max-w-[1200px] mx-auto px-6 py-8">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="font-serif text-[32px] font-bold text-gray-900">Tags</div>
+        <p className="text-[15px] text-gray-500 mt-1">
+          {tags.length} curated tags — auto-assigned by AI when questions are asked.
         </p>
       </div>
-      
+
+      {/* Info */}
+      <div className="bg-cream border border-gray-200 rounded-[10px] p-4 mb-6">
+        <p className="text-[14px] text-gray-600">
+          Tags categorize questions by scripture or topic. When you ask a question, AI automatically assigns the most relevant tags.
+          Verified experts can refine tags when answering.
+        </p>
+      </div>
+
+      {/* Search */}
       <div className="mb-6">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-96 border rounded-lg px-4 py-2"
+          className="w-full md:w-80 border-[1.5px] border-gray-200 rounded-[9px] px-4 py-2.5 text-[15px] outline-none focus:border-brand transition-colors"
           placeholder="Filter by tag name..."
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Tags Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {filteredTags.map(tag => (
           <Link
             key={tag._id}
             to={`/questions?tag=${tag.name}`}
-            className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow border border-gray-100"
+            className="bg-white border border-gray-200 rounded-[10px] p-5 hover:border-brand-100 hover:shadow-md transition-all"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded text-sm font-semibold">
-                {tag.name}
+            <div className="flex items-start justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{iconMap[tag.name] || '🏷️'}</span>
+                <span className="font-serif text-[16px] font-semibold text-gray-900">{tag.name}</span>
+              </div>
+              <span className="text-[13px] text-gray-400 bg-cream border border-gray-200 rounded-lg px-2 py-0.5">
+                {tag.count || 0}
               </span>
-              <span className="text-xs text-gray-500">{tag.count} questions</span>
             </div>
-            <p className="text-sm text-gray-600">
-              {tag.description || tagDescriptions[tag.name] || tagDescriptions['default']}
+            <p className="text-[14px] text-gray-500 leading-relaxed">
+              {tagDescriptions[tag.name] || 'A topic related to Hindu Sanatan Dharma.'}
             </p>
           </Link>
         ))}
       </div>
 
       {filteredTags.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-12 text-gray-400">
           No tags found matching "{search}"
         </div>
       )}

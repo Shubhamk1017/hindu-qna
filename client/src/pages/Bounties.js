@@ -41,12 +41,12 @@ const Bounties = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Active Bounties</h1>
+      <h1 className="text-[32px] font-bold mb-6">Active Bounties</h1>
 
       {bounties.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <FiAward className="text-6xl text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">No active bounties</h2>
+           <h2 className="text-[22px] font-bold mb-2">No active bounties</h2>
           <p className="text-gray-500 mb-4">Be the first to offer a bounty on a question!</p>
           <Link to="/questions" className="text-orange-600 hover:text-orange-700">
             Browse questions →
@@ -59,18 +59,18 @@ const Bounties = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
+                     <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-[14px] font-bold">
                       +{bounty.bountyAmount} reputation
                     </span>
-                    <span className="text-gray-500 text-sm flex items-center">
+                     <span className="text-gray-500 text-[14px] flex items-center">
                       <FiClock className="mr-1" />
                       Expires {new Date(bounty.bountyExpiresAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <Link to={`/questions/${bounty._id}`} className="text-xl font-semibold hover:text-orange-600">
+                   <Link to={`/questions/${bounty._id}`} className="text-[22px] font-semibold hover:text-orange-600">
                     {bounty.title}
                   </Link>
-                  <p className="text-sm text-gray-500 mt-1">
+                   <p className="text-[14px] text-gray-500 mt-1">
                     Asked by {bounty.author?.name}
                   </p>
                 </div>

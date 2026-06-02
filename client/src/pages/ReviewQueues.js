@@ -43,7 +43,7 @@ const ReviewQueues = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Review Queues</h1>
+      <h1 className="text-[32px] font-bold mb-6">Review Queues</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-1">
@@ -54,7 +54,7 @@ const ReviewQueues = () => {
                 <button
                   key={queue.id}
                   onClick={() => setActiveQueue(queue.id)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${
+                  className={`w-full text-left px-3 py-2 rounded text-[14px] ${
                     activeQueue === queue.id ? 'bg-orange-100 text-orange-800' : 'hover:bg-gray-100'
                   }`}
                 >
@@ -68,8 +68,8 @@ const ReviewQueues = () => {
         <div className="md:col-span-3">
           <div className="bg-white rounded-lg shadow-md">
             <div className="p-4 border-b">
-              <h2 className="text-xl font-bold">{queues.find(q => q.id === activeQueue)?.name}</h2>
-              <p className="text-gray-500 text-sm">{queues.find(q => q.id === activeQueue)?.description}</p>
+              <h2 className="text-[22px] font-bold">{queues.find(q => q.id === activeQueue)?.name}</h2>
+              <p className="text-gray-500 text-[14px]">{queues.find(q => q.id === activeQueue)?.description}</p>
             </div>
 
             <div className="p-4">
@@ -88,8 +88,8 @@ const ReviewQueues = () => {
                           <Link to={`/questions/${review.post?._id}`} className="font-semibold hover:text-orange-600">
                             {review.post?.title}
                           </Link>
-                          <p className="text-sm text-gray-500 mt-1">
-                            by {review.author?.name} • {new Date(review.createdAt).toLocaleDateString()}
+                          <p className="text-[14px] text-gray-500 mt-1">
+                             by {review.author?.name} • {new Date(review.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex space-x-2">

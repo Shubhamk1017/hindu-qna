@@ -68,11 +68,7 @@ router.post('/login', [
     }
 
     if (user.provider !== 'local') {
-      return res.status(400).json({ message: 'Please login with your social account' });
-    }
-
-    if (['guru', 'acharya', 'admin'].includes(user.role)) {
-      return res.status(400).json({ message: 'Gurus and admins must use the Guru/Admin Login section' });
+      return res.status(400).json({ message: 'This account was created with Google. Please sign in with Google.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

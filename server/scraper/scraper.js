@@ -248,10 +248,12 @@ async function buildBGUrls() {
   return urls;
 }
 
-async function buildSBUrls() {
+async function buildSBUrls(targetCanto) {
   console.log("\n📖 Building Srimad Bhagavatam URL list...");
   const urls = [];
   for (const [canto, numChapters] of Object.entries(BOOKS.sb.cantos)) {
+    if (targetCanto && Number(canto) !== targetCanto) continue;
+    console.log(`  → Canto ${canto} (${numChapters} chapters)...`);
     for (let chapter = 1; chapter <= numChapters; chapter++) {
       const chapterUrl = BOOKS.sb.urlFn(canto, chapter);
       const verses = await getVerseList(chapterUrl);
@@ -383,6 +385,11 @@ async function main() {
   const bookFlag = process.argv.includes('--book') ? process.argv[process.argv.indexOf('--book') + 1] : null;
   const targetBook = bookArg ? bookArg.split('=')[1] : bookFlag;
 
+  // ── Parse --canto argument (only for SB)
+  const cantoArg = process.argv.find(a => a.startsWith('--canto='));
+  const cantoFlag = process.argv.includes('--canto') ? process.argv[process.argv.indexOf('--canto') + 1] : null;
+  const targetCanto = cantoArg ? Number(cantoArg.split('=')[1]) : cantoFlag ? Number(cantoFlag) : null;
+
   // ── Run scrapers (filter by --book if specified)
   const scrapers = [
     { key: 'bg',  fn: buildBGUrls,  label: 'Bhagavad Gita' },
@@ -394,7 +401,7 @@ async function main() {
 
   for (const s of scrapers) {
     if (targetBook && targetBook !== s.key) continue;
-    const urls = await s.fn();
+    const urls = await s.fn(s.key === 'sb' ? targetCanto : null);
     await processUrlList(urls, s.label);
   }
 
