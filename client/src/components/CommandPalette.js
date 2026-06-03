@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import api from '../utils/api';
 import {
-  FiSearch, FiHome, FiHelpCircle, FiUsers, FiBook, FiMessageSquare,
-  FiSun, FiMoon, FiCommand, FiArrowRight, FiPlus, FiStar, FiSend,
+  FiSearch, FiHome, FiHelpCircle, FiUsers, FiBook,
+  FiSun, FiMoon, FiArrowRight, FiPlus, FiSend,
   FiTrendingUp
 } from 'react-icons/fi';
 

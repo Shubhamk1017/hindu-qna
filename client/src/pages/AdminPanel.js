@@ -7,7 +7,7 @@ import {
   FiTrendingUp, FiActivity, FiSearch, FiStar, FiClock,
   FiShield, FiAlertCircle, FiArrowRight, FiChevronDown,
   FiFileText, FiUserCheck, FiZap, FiBarChart2, FiCalendar, FiHash,
-  FiSmartphone, FiLoader, FiPhone, FiSend, FiRefreshCw
+  FiSmartphone, FiPhone, FiSend, FiRefreshCw
 } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -346,7 +346,7 @@ const AdminPanel = () => {
 
       // Fetch WhatsApp data (non-critical, don't fail if endpoint doesn't exist)
       try {
-        const [waStatusRes, waPendingRes, gurusRes] = await Promise.all([
+        const [waStatusRes, waPendingRes] = await Promise.all([
           api.get('/whatsapp/status').catch(() => ({ data: {} })),
           api.get('/whatsapp/answers/pending').catch(() => ({ data: { answers: [] } })),
           api.get('/admin/users?role=guru&limit=50').catch(() => ({ data: { users: [] } })),

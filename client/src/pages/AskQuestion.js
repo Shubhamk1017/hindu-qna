@@ -53,7 +53,6 @@ const AskQuestion = () => {
 
   const titleCharsLeft = 300 - title.length;
   const titlePercent = (title.length / 300) * 100;
-  const isTitleValid = title.length >= 15 || title.length === 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
