@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from './components/ErrorBoundary';
+import CommandPalette from './components/CommandPalette';
 
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -22,35 +24,52 @@ import Bounties from './pages/Bounties';
 import AuthCallback from './pages/AuthCallback';
 
 function App() {
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // ⌘K / Ctrl+K toggle
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-cream">
-            <Navbar />
-            <main className="container mx-auto px-4 py-6">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/questions" element={<Questions />} />
-                <Route path="/questions/ask" element={<AskQuestion />} />
-                <Route path="/questions/:id" element={<QuestionDetail />} />
-                <Route path="/tags" element={<Tags />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/profile/:id" element={<Profile />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/guru" element={<GuruPortal />} />
-                <Route path="/admin" element={<AdminPanel />} />
-                <Route path="/chat" element={<AIChat />} />
-                <Route path="/reviews" element={<ReviewQueues />} />
-                <Route path="/bounties" element={<Bounties />} />
-              </Routes>
-            </main>
-          </div>
-        </Router>
-        <Toaster position="top-right" />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-cream dark:bg-[#141110] transition-colors duration-300">
+              <Navbar onOpenPalette={() => setPaletteOpen(true)} />
+              <main className="container mx-auto px-4 py-6">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/questions" element={<Questions />} />
+                  <Route path="/questions/ask" element={<AskQuestion />} />
+                  <Route path="/questions/:id" element={<QuestionDetail />} />
+                  <Route path="/tags" element={<Tags />} />
+                  <Route path="/users" element={<Users />} />
+                  <Route path="/profile/:id" element={<Profile />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/guru" element={<GuruPortal />} />
+                  <Route path="/admin" element={<AdminPanel />} />
+                  <Route path="/chat" element={<AIChat />} />
+                  <Route path="/reviews" element={<ReviewQueues />} />
+                  <Route path="/bounties" element={<Bounties />} />
+                </Routes>
+              </main>
+              <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+              <Toaster position="top-right" />
+            </div>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'scholar', 'guru', 'acharya', 'admin'],
     default: 'user'
   },
+  phone: {
+    type: String,
+    default: ''
+  },
   provider: {
     type: String,
     enum: ['google', 'github', 'local'],

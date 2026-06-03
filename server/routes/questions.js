@@ -364,6 +364,18 @@ router.post('/', auth, [
       console.error('AI answer generation failed:', err.message)
     );
 
+    // Notify WhatsApp group in background (non-blocking)
+    try {
+      const whatsappService = require('../services/whatsapp');
+      // Re-fetch question with populated tags for the message
+      const populatedQuestion = await Question.findById(question._id).populate('tags', 'name');
+      whatsappService.sendQuestionToGroup(populatedQuestion).catch(err =>
+        console.error('[WhatsApp] Failed to send question notification:', err.message)
+      );
+    } catch (e) {
+      // WhatsApp service may not be configured — silently ignore
+    }
+
     res.status(201).json(question);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

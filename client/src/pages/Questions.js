@@ -6,6 +6,7 @@ import QuestionCard from '../components/QuestionCard';
 import TopExperts from '../components/TopExperts';
 import RecentActivity from '../components/RecentActivity';
 import { FiSearch, FiClock, FiTrendingUp, FiMessageSquare, FiGrid, FiList, FiX, FiFilter, FiArrowUp, FiCheckCircle, FiAlertCircle, FiStar } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 const SORT_OPTIONS = [
   { value: 'votes', label: 'Top Voted', icon: FiTrendingUp },
@@ -35,14 +36,15 @@ const Questions = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const searchTimeoutRef = useRef(null);
 
   const fetchFavorites = async () => {
     try {
       if (!user?._id) return;
       const res = await api.get(`/users/${user._id}/favorites`);
-      setFavorites(res.data);
+      const data = res.data || [];
+      setFavorites(data.map(f => typeof f === 'string' ? f : f._id));
     } catch {
       setFavorites([]);
     }
@@ -102,6 +104,16 @@ const Questions = () => {
       setTags((res.data.tags || []).slice(0, 10));
     } catch {
       setTags([]);
+    }
+  };
+
+  const toggleBookmark = async (questionId) => {
+    if (!user) return toast.error('Please login to bookmark');
+    try {
+      const res = await api.post(`/users/favorites/${questionId}`);
+      setFavorites(res.data.favorites || []);
+    } catch {
+      toast.error('Error updating bookmark');
     }
   };
 
@@ -417,7 +429,12 @@ const Questions = () => {
                   className="animate-fade-in-scale"
                   style={{ animationDelay: `${idx * 60}ms` }}
                 >
-                  <QuestionCard question={question} compact={viewMode === 'compact'} />
+                  <QuestionCard
+                    question={question}
+                    compact={viewMode === 'compact'}
+                    bookmarked={favorites.includes(question._id)}
+                    onToggleBookmark={toggleBookmark}
+                  />
                 </div>
               ))}
             </div>

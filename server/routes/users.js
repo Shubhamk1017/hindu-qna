@@ -117,12 +117,13 @@ router.get('/:id', async (req, res) => {
 // Update profile
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { name, avatar } = req.body;
+    const { name, avatar, phone } = req.body;
     
     const user = await User.findById(req.user._id);
     
     if (name) user.name = name;
     if (avatar) user.avatar = avatar;
+    if (phone !== undefined) user.phone = phone;
 
     await user.save();
     res.json(user);

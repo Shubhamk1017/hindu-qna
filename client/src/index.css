@@ -12,7 +12,39 @@ body {
   color: #1C1612;
   font-size: 14px;
   line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+.dark body {
+  background-color: #141110;
+  color: #E8E0D5;
+}
+
+/* ── Dark mode overrides ───────────────────────────────────── */
+
+.dark .bg-white { background-color: #1C1814 !important; }
+.dark .bg-cream { background-color: #141110 !important; }
+.dark .border-gray-100 { border-color: #2A2520 !important; }
+.dark .border-gray-200 { border-color: #3A342E !important; }
+.dark .text-gray-900 { color: #E8E0D5 !important; }
+.dark .text-gray-800 { color: #D4CCC2 !important; }
+.dark .text-gray-700 { color: #B8B0A5 !important; }
+.dark .text-gray-600 { color: #A0988E !important; }
+.dark .text-gray-500 { color: #8A8278 !important; }
+.dark .text-gray-400 { color: #706860 !important; }
+.dark .text-gray-300 { color: #585048 !important; }
+.dark .bg-gray-50 { background-color: #1C1814 !important; }
+.dark .bg-gray-100 { background-color: #2A2520 !important; }
+.dark .hover\:bg-gray-50:hover { background-color: #2A2520 !important; }
+.dark .bg-cream { background-color: #141110 !important; }
+.dark .shadow-sm { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3) !important; }
+.dark .shadow-lg { box-shadow: 0 4px 24px -4px rgba(0,0,0,0.5) !important; }
+.dark .skeleton {
+  background: linear-gradient(90deg, #2A2520 25%, #353028 37%, #2A2520 63%);
+  background-size: 600px 100%;
+}
+.dark ::-webkit-scrollbar-thumb { background: #3A342E; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #504840; }
 
 .line-clamp-3 {
   display: -webkit-box;

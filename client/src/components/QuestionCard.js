@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiChevronUp, FiMessageSquare, FiEye, FiClock, FiBookmark } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+import { FiChevronUp, FiMessageSquare, FiEye, FiClock, FiBookmark, FiCheck } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const getDifficulty = (votes, answerCount) => {
   if (votes >= 5 || answerCount >= 3) return { label: 'Hot', color: 'bg-red-50 text-red-600 border-red-100', icon: '🔥' };
@@ -9,7 +12,8 @@ const getDifficulty = (votes, answerCount) => {
   return { label: 'New', color: 'bg-blue-50 text-blue-600 border-blue-100', icon: '✨' };
 };
 
-const QuestionCard = ({ question, compact = false }) => {
+const QuestionCard = ({ question, compact = false, bookmarked = false, onToggleBookmark }) => {
+  const { user } = useAuth();
   const votes = question.upvotes?.length || 0;
   const answerCount = question.answers?.length || 0;
   const hasAccepted = question.answers?.some(a => a.accepted);
@@ -103,9 +107,32 @@ const QuestionCard = ({ question, compact = false }) => {
               </span>
             )}
           </div>
-          <button className="p-1.5 rounded-lg text-gray-300 hover:text-brand hover:bg-brand-50 transition-all duration-200 opacity-0 group-hover:opacity-100" title="Bookmark">
-            <FiBookmark size={14} />
-          </button>
+          {user && (
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onToggleBookmark) {
+                  onToggleBookmark(question._id);
+                } else {
+                  try {
+                    await api.post(`/users/favorites/${question._id}`);
+                    toast.success(bookmarked ? 'Removed from bookmarks' : 'Bookmarked!');
+                  } catch (err) {
+                    if (err.response?.status === 401) toast.error('Please login to bookmark');
+                  }
+                }
+              }}
+              className={`p-1.5 rounded-lg transition-all duration-200 ${
+                bookmarked
+                  ? 'text-brand bg-brand-50 opacity-100 scale-110'
+                  : 'text-gray-300 hover:text-brand hover:bg-brand-50 opacity-0 group-hover:opacity-100'
+              }`}
+              title={bookmarked ? 'Remove bookmark' : 'Bookmark'}
+            >
+              {bookmarked ? <FiCheck size={14} /> : <FiBookmark size={14} />}
+            </button>
+          )}
         </div>
 
         {/* Title */}

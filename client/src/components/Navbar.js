@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiHome, FiHelpCircle, FiUsers, FiBook, FiPlus, FiLogOut, FiMenu, FiX, FiShield, FiMessageSquare } from 'react-icons/fi';
+import { useTheme } from '../context/ThemeContext';
+import { FiHome, FiHelpCircle, FiUsers, FiBook, FiPlus, FiLogOut, FiMenu, FiX, FiShield, FiMessageSquare, FiSun, FiMoon, FiCommand } from 'react-icons/fi';
 
-const Navbar = () => {
+const Navbar = ({ onOpenPalette }) => {
   const { user, logout } = useAuth();
+  const { dark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,19 +27,19 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white dark:bg-[#1C1814] border-b border-gray-200 dark:border-[#2A2520] sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-[1200px] mx-auto px-6">
         <div className="flex items-center h-14 gap-2">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 mr-5">
+          <Link to="/" className="flex items-center gap-2.5 mr-3">
             <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center flex-shrink-0">
               <FiBook className="text-white" size={15} />
             </div>
-            <span className="font-serif text-[16px] font-semibold text-gray-900">Pariprashna</span>
+            <span className="font-serif text-[16px] font-semibold text-gray-900 dark:text-gray-100">Pariprashna</span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="flex items-center gap-0.5 flex-1">
+          <div className="hidden md:flex items-center gap-0.5 flex-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -46,8 +48,8 @@ const Navbar = () => {
                   to={item.path}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[14px] transition-colors ${
                     isActive(item.path)
-                      ? 'bg-brand-50 text-brand border border-brand-100 font-medium'
-                      : 'text-gray-600 hover:bg-cream hover:text-gray-900'
+                      ? 'bg-brand-50 dark:bg-brand/10 text-brand border border-brand-100 dark:border-brand/20 font-medium'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-cream dark:hover:bg-[#2A2520] hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
                 >
                   <Icon size={14} />
@@ -60,8 +62,8 @@ const Navbar = () => {
                 to="/guru"
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[14px] transition-colors ${
                   isActive('/guru')
-                    ? 'bg-brand-50 text-brand border border-brand-100 font-medium'
-                    : 'text-gray-600 hover:bg-cream hover:text-gray-900'
+                    ? 'bg-brand-50 dark:bg-brand/10 text-brand border border-brand-100 dark:border-brand/20 font-medium'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-cream dark:hover:bg-[#2A2520] hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 <FiShield size={14} />
@@ -73,8 +75,8 @@ const Navbar = () => {
                 to="/admin"
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[14px] transition-colors ${
                   isActive('/admin')
-                    ? 'bg-brand-50 text-brand border border-brand-100 font-medium'
-                    : 'text-gray-600 hover:bg-cream hover:text-gray-900'
+                    ? 'bg-brand-50 dark:bg-brand/10 text-brand border border-brand-100 dark:border-brand/20 font-medium'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-cream dark:hover:bg-[#2A2520] hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 <FiShield size={14} />
@@ -84,12 +86,31 @@ const Navbar = () => {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Command Palette Toggle */}
+            <button
+              onClick={onOpenPalette}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] text-gray-400 dark:text-gray-500 hover:bg-cream dark:hover:bg-[#2A2520] hover:text-gray-600 dark:hover:text-gray-300 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-[#3A342E]"
+              title="Search (⌘K)"
+            >
+              <FiCommand size={13} />
+              <kbd className="text-[10px] font-mono opacity-60 hidden lg:inline">⌘K</kbd>
+            </button>
+
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggle}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-cream dark:hover:bg-[#2A2520] hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              title={dark ? 'Light Mode' : 'Dark Mode'}
+            >
+              {dark ? <FiSun size={15} /> : <FiMoon size={15} />}
+            </button>
+
             {user ? (
               <>
                 <Link
                   to="/questions/ask"
-                  className="flex items-center gap-1.5 bg-brand text-white px-4 py-[7px] rounded-lg text-[14px] font-medium hover:bg-brand-500 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 bg-brand text-white px-4 py-[7px] rounded-lg text-[14px] font-medium hover:bg-brand-500 transition-colors"
                 >
                   <FiPlus size={14} />
                   Ask
@@ -102,7 +123,7 @@ const Navbar = () => {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-400 hover:text-gray-600 transition-colors hidden md:block ml-1"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors hidden md:block"
                   title="Logout"
                 >
                   <FiLogOut size={16} />
@@ -120,7 +141,7 @@ const Navbar = () => {
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden text-gray-600 ml-1"
+              className="md:hidden text-gray-600 dark:text-gray-400 ml-0.5"
             >
               {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
             </button>
@@ -129,7 +150,7 @@ const Navbar = () => {
 
         {/* Mobile Nav */}
         {mobileOpen && (
-          <div className="md:hidden pb-3 border-t border-gray-100 mt-1">
+          <div className="md:hidden pb-3 border-t border-gray-100 dark:border-[#2A2520] mt-1">
             <div className="flex flex-col gap-0.5 pt-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -140,8 +161,8 @@ const Navbar = () => {
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] ${
                       isActive(item.path)
-                        ? 'bg-brand-50 text-brand'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-brand-50 dark:bg-brand/10 text-brand'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2520]'
                     }`}
                   >
                     <Icon size={16} />
@@ -149,6 +170,25 @@ const Navbar = () => {
                   </Link>
                 );
               })}
+              
+              {/* Dark mode toggle in mobile */}
+              <button
+                onClick={() => { toggle(); setMobileOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2520]"
+              >
+                {dark ? <FiSun size={16} /> : <FiMoon size={16} />}
+                {dark ? 'Light Mode' : 'Dark Mode'}
+              </button>
+
+              {/* Search in mobile */}
+              <button
+                onClick={() => { onOpenPalette(); setMobileOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2520]"
+              >
+                <FiCommand size={16} />
+                Search (⌘K)
+              </button>
+
               {user && (
                 <Link
                   to="/questions/ask"
@@ -163,7 +203,7 @@ const Navbar = () => {
                 <Link
                   to="/guru"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 hover:bg-gray-50"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2520]"
                 >
                   <FiShield size={16} />
                   Guru Portal
@@ -173,7 +213,7 @@ const Navbar = () => {
                 <Link
                   to="/admin"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 hover:bg-gray-50"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-[14px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#2A2520]"
                 >
                   <FiShield size={16} />
                   Admin

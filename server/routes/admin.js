@@ -218,17 +218,18 @@ router.get('/users', adminAuth, async (req, res) => {
 // Update user role
 router.put('/users/:id/role', adminAuth, async (req, res) => {
   try {
-    const { role } = req.body;
+    const { role, phone } = req.body;
     const user = await User.findById(req.params.id);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.role = role;
+    if (role) user.role = role;
+    if (phone !== undefined) user.phone = phone;
     await user.save();
 
-    res.json({ message: 'User role updated' });
+    res.json({ message: 'User updated' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

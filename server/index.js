@@ -78,6 +78,8 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/bounties', require('./routes/bounties'));
 app.use('/api/activity', require('./routes/activity'));
+app.use('/api/bot', require('./routes/bot'));
+app.use('/api/whatsapp', require('./routes/whatsapp'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -101,4 +103,15 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Initialize WhatsApp client if configured
+  if (process.env.WHATSAPP_GROUP_ID) {
+    try {
+      const whatsappService = require('./services/whatsapp');
+      whatsappService.initClient();
+      console.log('[WhatsApp] Client initialization triggered');
+    } catch (e) {
+      console.error('[WhatsApp] Failed to initialize:', e.message);
+    }
+  }
 });

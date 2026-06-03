@@ -6,7 +6,8 @@ import {
   FiUsers, FiMessageSquare, FiCheck, FiX, FiCpu,
   FiTrendingUp, FiActivity, FiSearch, FiStar, FiClock,
   FiShield, FiAlertCircle, FiArrowRight, FiChevronDown,
-  FiFileText, FiUserCheck, FiZap, FiBarChart2, FiCalendar, FiHash
+  FiFileText, FiUserCheck, FiZap, FiBarChart2, FiCalendar, FiHash,
+  FiSmartphone, FiLoader, FiPhone, FiSend, FiRefreshCw
 } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -215,8 +216,84 @@ const TABS = [
   { id: 'users', label: 'Users', icon: FiUsers },
   { id: 'gurus', label: 'Gurus', icon: FiUserCheck },
   { id: 'ai-answers', label: 'AI Answers', icon: FiCpu },
+  { id: 'whatsapp', label: 'WhatsApp', icon: FiSmartphone },
   { id: 'activity', label: 'Activity', icon: FiActivity },
 ];
+
+// ── WhatsApp Approve Modal ──────────────────────────────────
+function WhatsAppApproveModal({ open, message, gurus, onApprove, onCancel }) {
+  const [selectedGuru, setSelectedGuru] = useState('');
+  if (!open || !message) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto animate-fade-in-scale"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 rounded-t-2xl">
+          <h3 className="font-serif text-xl font-bold text-gray-900">Approve WhatsApp Answer</h3>
+          <p className="text-[13px] text-gray-400 mt-0.5">Assign a guru and publish this answer on the website</p>
+        </div>
+        <div className="p-6">
+          {/* Question */}
+          <div className="mb-4">
+            <label className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Question</label>
+            <Link to={`/questions/${message.question?._id}`} className="block font-semibold text-[16px] text-brand hover:text-brand-600 mt-1">
+              {message.question?.title || 'Unknown question'}
+            </Link>
+          </div>
+          {/* Sender */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-xl">
+            <FiPhone size={14} className="text-gray-400" />
+            <div>
+              <span className="text-[14px] font-medium text-gray-700">{message.senderName || 'Unknown'}</span>
+              {message.senderPhone && <span className="text-[13px] text-gray-400 ml-2">{message.senderPhone}</span>}
+            </div>
+          </div>
+          {/* Answer text */}
+          <div>
+            <label className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Answer</label>
+            <div className="mt-1.5 text-[14px] text-gray-700 bg-gray-50 border border-gray-100 p-4 rounded-xl max-h-40 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+              {message.answerText}
+            </div>
+          </div>
+          {/* Guru assignment */}
+          <div className="mt-5">
+            <label className="text-[13px] font-semibold text-gray-600 uppercase tracking-wide">Assign to Guru</label>
+            <p className="text-[12px] text-gray-400 mt-0.5 mb-2">Choose which guru/acharya gets credit for this answer</p>
+            <div className="relative">
+              <select
+                value={selectedGuru}
+                onChange={(e) => setSelectedGuru(e.target.value)}
+                className="w-full appearance-none pl-4 pr-9 py-3 bg-gray-50 border border-gray-200 rounded-xl text-[15px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40 transition-all cursor-pointer"
+              >
+                <option value="">Auto-detect from sender / fallback to admin</option>
+                {gurus.map((g) => (
+                  <option key={g._id} value={g._id}>
+                    {g.name} ({g.role})
+                  </option>
+                ))}
+              </select>
+              <FiChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+          <button onClick={onCancel} className="px-4 py-2 text-[14px] font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => onApprove(selectedGuru || undefined)}
+            className="px-5 py-2 text-[14px] font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-xl transition-all duration-200 flex items-center gap-1.5"
+          >
+            <FiCheck size={14} /> Approve & Publish
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── AdminPanel ────────────────────────────────────────────────
 const AdminPanel = () => {
@@ -225,6 +302,10 @@ const AdminPanel = () => {
   const [users, setUsers] = useState([]);
   const [aiAnswers, setAiAnswers] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [whatsappAnswers, setWhatsappAnswers] = useState([]);
+  const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [whatsappQR, setWhatsappQR] = useState(null);
+  const [gurus, setGurus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [userSearch, setUserSearch] = useState('');
@@ -236,6 +317,7 @@ const AdminPanel = () => {
   // Modals
   const [verifyModal, setVerifyModal] = useState({ open: false, answer: null });
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false });
+  const [waApproveModal, setWaApproveModal] = useState({ open: false, message: null });
 
   // Debounced search
   useEffect(() => {
@@ -261,6 +343,24 @@ const AdminPanel = () => {
       setUserTotalPages(usersRes.data.totalPages || 1);
       setAiAnswers(aiRes.data.answers || []);
       setActivities(actRes.data.activities || []);
+
+      // Fetch WhatsApp data (non-critical, don't fail if endpoint doesn't exist)
+      try {
+        const [waStatusRes, waPendingRes, gurusRes] = await Promise.all([
+          api.get('/whatsapp/status').catch(() => ({ data: {} })),
+          api.get('/whatsapp/answers/pending').catch(() => ({ data: { answers: [] } })),
+          api.get('/admin/users?role=guru&limit=50').catch(() => ({ data: { users: [] } })),
+        ]);
+        setWhatsappStatus(waStatusRes.data);
+        setWhatsappAnswers(waPendingRes.data.answers || []);
+        // Combine guru and acharya users for the dropdown
+        const guruUsers = [
+          ...(usersRes.data.users || []).filter(u => ['guru', 'acharya', 'admin'].includes(u.role)),
+        ];
+        setGurus(guruUsers);
+      } catch (e) {
+        // WhatsApp integration not configured — silently ignore
+      }
     } catch (error) {
       toast.error('Error loading admin data');
     }
@@ -313,6 +413,54 @@ const AdminPanel = () => {
       fetchData();
     } catch {
       toast.error('Error updating user role');
+    }
+  };
+
+  const handlePhoneUpdate = async (userId, phone) => {
+    try {
+      await api.put(`/admin/users/${userId}/role`, { phone });
+      toast.success('Phone number updated');
+      fetchData();
+    } catch {
+      toast.error('Error updating phone number');
+    }
+  };
+
+  const handleApproveWhatsApp = async (msgId, guruUserId) => {
+    try {
+      await api.post(`/whatsapp/answers/${msgId}/approve`, { guruUserId });
+      toast.success('WhatsApp answer approved and published!');
+      setWhatsappAnswers(prev => prev.filter(a => a._id !== msgId));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error approving answer');
+    }
+  };
+
+  const handleRejectWhatsApp = async (msgId) => {
+    try {
+      await api.post(`/whatsapp/answers/${msgId}/reject`);
+      toast.success('Answer rejected');
+      setWhatsappAnswers(prev => prev.filter(a => a._id !== msgId));
+    } catch {
+      toast.error('Error rejecting answer');
+    }
+  };
+
+  const handleInitWhatsApp = async () => {
+    try {
+      await api.post('/whatsapp/init');
+      toast.success('WhatsApp client initializing...');
+      // Poll for status
+      setTimeout(async () => {
+        const statusRes = await api.get('/whatsapp/status').catch(() => ({ data: {} }));
+        setWhatsappStatus(statusRes.data);
+        if (statusRes.data.hasQR) {
+          const qrRes = await api.get('/whatsapp/qr').catch(() => ({ data: {} }));
+          setWhatsappQR(qrRes.data.qr);
+        }
+      }, 3000);
+    } catch {
+      toast.error('Error initializing WhatsApp client');
     }
   };
 
@@ -429,8 +577,7 @@ const AdminPanel = () => {
         <div className="border-b border-gray-100 px-3 pt-3 flex gap-1 overflow-x-auto">
           {TABS.map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            const badge = tab.id === 'ai-answers' ? aiAnswers.length : tab.id === 'gurus' ? stats?.pendingVerifications : null;
+            const isActive = activeTab === tab.id;                const badge = tab.id === 'ai-answers' ? aiAnswers.length : tab.id === 'whatsapp' ? whatsappAnswers.length : tab.id === 'gurus' ? stats?.pendingVerifications : null;
             return (
               <button
                 key={tab.id}
@@ -607,10 +754,25 @@ const AdminPanel = () => {
                             <div className="text-[14px] text-gray-400 mt-0.5 truncate">{u.email}</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 sm:ml-auto">
+                        <div className="flex items-center gap-3 sm:ml-auto flex-wrap sm:flex-nowrap">
                           <div className="text-right hidden sm:block">
                             <div className="text-[13px] text-gray-400">Reputation</div>
                             <div className="text-[16px] font-semibold text-gray-700">{u.reputation || 0}</div>
+                          </div>
+                          {/* Phone input */}
+                          <div className="flex items-center gap-1.5">
+                            <FiPhone size={12} className="text-gray-300" />
+                            <input
+                              type="tel"
+                              defaultValue={u.phone || ''}
+                              onBlur={(e) => {
+                                const val = e.target.value.trim();
+                                if (val !== (u.phone || '')) handlePhoneUpdate(u._id, val);
+                              }}
+                              placeholder="Phone"
+                              className="w-28 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-gray-600 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand/40 transition-all"
+                              title="Set WhatsApp phone number for auto-matching"
+                            />
                           </div>
                           <div className="relative">
                             <select
@@ -824,6 +986,167 @@ const AdminPanel = () => {
             </div>
           )}
 
+          {/* ── WHATSAPP TAB ──────────────────────── */}
+          {activeTab === 'whatsapp' && (
+            <div className="space-y-6">
+              {/* Connection Status */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100/60 rounded-xl p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                      <FiSmartphone size={22} className="text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-[16px] font-semibold text-gray-800">WhatsApp Integration</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${whatsappStatus?.isReady ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+                        <span className="text-[13px] text-gray-500">
+                          {whatsappStatus?.isReady ? 'Connected' : whatsappStatus?.hasQR ? 'QR Code ready — scan to authenticate' : 'Not connected'}
+                        </span>
+                      </div>
+                      {whatsappStatus?.groupId && (
+                        <p className="text-[12px] text-gray-400 mt-1">Group: {whatsappStatus.groupId}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const statusRes = await api.get('/whatsapp/status').catch(() => ({ data: {} }));
+                          setWhatsappStatus(statusRes.data);
+                          if (statusRes.data.hasQR) {
+                            const qrRes = await api.get('/whatsapp/qr').catch(() => ({ data: {} }));
+                            setWhatsappQR(qrRes.data.qr);
+                          }
+                        } catch {
+                          toast.error('Could not fetch WhatsApp status');
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+                    >
+                      <FiRefreshCw size={13} /> Refresh
+                    </button>
+                    {!whatsappStatus?.isReady && (
+                      <button
+                        onClick={handleInitWhatsApp}
+                        className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-sm hover:shadow transition-all"
+                      >
+                        <FiSend size={13} /> Initialize
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* QR Code display */}
+                {whatsappQR && (
+                  <div className="mt-4 p-4 bg-white rounded-xl border border-gray-100 inline-block">
+                    <p className="text-[12px] text-gray-400 mb-2 text-center">Scan this QR code with WhatsApp on your phone</p>
+                    <img src={whatsappQR} alt="WhatsApp QR Code" className="w-56 h-56 mx-auto" />
+                  </div>
+                )}
+              </div>
+
+              {/* How it works */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                <h4 className="text-[14px] font-semibold text-gray-700 mb-3">How it works</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0 text-brand text-[14px] font-bold">1</div>
+                    <div>
+                      <p className="text-[13px] font-medium text-gray-700">New question posted</p>
+                      <p className="text-[12px] text-gray-400 mt-0.5">Automatically sent to your WhatsApp group</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0 text-brand text-[14px] font-bold">2</div>
+                    <div>
+                      <p className="text-[13px] font-medium text-gray-700">Guru replies in group</p>
+                      <p className="text-[12px] text-gray-400 mt-0.5">Bot captures the reply as a pending answer</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0 text-brand text-[14px] font-bold">3</div>
+                    <div>
+                      <p className="text-[13px] font-medium text-gray-700">Admin approves & assigns</p>
+                      <p className="text-[12px] text-gray-400 mt-0.5">Pick the guru and publish the answer</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pending WhatsApp Answers */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-[16px] font-semibold text-gray-800 flex items-center gap-2">
+                    <FiSmartphone size={16} className="text-green-500" /> Pending WhatsApp Answers
+                    {whatsappAnswers.length > 0 && (
+                      <span className="text-[11px] font-bold bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                        {whatsappAnswers.length}
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                {whatsappAnswers.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-100">
+                    <FiSmartphone size={28} className="text-gray-300 mx-auto mb-2" />
+                    <p className="text-[15px] text-gray-500">No pending WhatsApp answers</p>
+                    <p className="text-[13px] text-gray-400 mt-1">Answers from WhatsApp gurus will appear here for review</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {whatsappAnswers.map((msg, i) => (
+                      <div
+                        key={msg._id}
+                        className="bg-white border border-gray-100 rounded-xl p-6 hover:border-green-200 hover:shadow-sm transition-all duration-200 animate-fade-in-up"
+                        style={{ animationDelay: `${i * 40}ms` }}
+                      >
+                        <div className="flex flex-col lg:flex-row gap-5">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-green-50 text-green-600 border border-green-100">
+                                <FiSmartphone size={11} /> WhatsApp Reply
+                              </span>
+                              <span className="text-[13px] text-gray-300">·</span>
+                              <span className="text-[13px] text-gray-400">
+                                {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+                              </span>
+                            </div>
+                            <Link to={`/questions/${msg.question?._id}`} className="font-semibold text-[17px] text-gray-900 hover:text-brand transition-colors line-clamp-1">
+                              {msg.question?.title || 'Unknown question'}
+                            </Link>
+                            <div className="flex items-center gap-3 mt-2">
+                              <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
+                                <FiPhone size={11} />
+                                {msg.senderName || 'Unknown'} {msg.senderPhone ? `(${msg.senderPhone})` : ''}
+                              </div>
+                            </div>
+                            <div className="mt-3 text-[14px] text-gray-600 bg-gray-50 border border-gray-100 p-4 rounded-lg max-h-40 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+                              {msg.answerText}
+                            </div>
+                          </div>
+                          <div className="flex lg:flex-col gap-2.5 lg:justify-center shrink-0">
+                            <button
+                              onClick={() => setWaApproveModal({ open: true, message: msg })}
+                              className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-sm hover:shadow transition-all duration-200"
+                            >
+                              <FiCheck size={14} /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectWhatsApp(msg._id)}
+                              className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] font-medium text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-all duration-200"
+                            >
+                              <FiX size={14} /> Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ── ACTIVITY TAB ────────────────────────── */}
           {activeTab === 'activity' && (
             <div className="space-y-2">
@@ -862,6 +1185,16 @@ const AdminPanel = () => {
         onCancel={() => setConfirmModal({ open: false })}
         confirmLabel={confirmModal.confirmLabel}
         danger={confirmModal.danger}
+      />
+      <WhatsAppApproveModal
+        open={waApproveModal.open}
+        message={waApproveModal.message}
+        gurus={gurus}
+        onApprove={(guruUserId) => {
+          handleApproveWhatsApp(waApproveModal.message._id, guruUserId);
+          setWaApproveModal({ open: false, message: null });
+        }}
+        onCancel={() => setWaApproveModal({ open: false, message: null })}
       />
     </div>
   );
