@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hindu-qna-api
+    env: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: SITE_URL
+        sync: false
+      - key: WHATSAPP_GROUP_ID
+        sync: false
+      # Add these secrets in the Render dashboard:
+      # MONGODB_URI, JWT_SECRET, CLIENT_URL, GEMINI_API_KEY, GROQ_API_KEY,
+      # GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET

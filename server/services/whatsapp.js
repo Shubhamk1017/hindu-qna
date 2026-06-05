@@ -15,6 +15,38 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
 
+// Use @sparticuz/chromium in production (Render doesn't have system Chrome)
+function getPuppeteerConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  const config = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu',
+    ],
+  };
+
+  if (isProduction) {
+    try {
+      const chromium = require('@sparticuz/chromium');
+      config.executablePath = chromium.executablePath;
+      config.args = chromium.args.concat(config.args);
+      console.log('[WhatsApp] Using @sparticuz/chromium for production');
+    } catch (err) {
+      console.error('[WhatsApp] @sparticuz/chromium not found, falling back to bundled puppeteer');
+    }
+  }
+
+  return config;
+}
+
 let client = null;
 let isReady = false;
 let latestQR = null; // base64 data URL of the latest QR code
@@ -38,19 +70,7 @@ function initClient() {
 
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
-    puppeteer: {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu',
-      ],
-    },
+    puppeteer: getPuppeteerConfig(),
   });
 
   client.on('qr', async (qr) => {
