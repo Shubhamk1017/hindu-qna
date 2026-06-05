@@ -14,42 +14,21 @@
 
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const QRCode = require('qrcode');
+const { execSync } = require('child_process');
 
-// Use @sparticuz/chromium in production (Render doesn't have system Chrome)
-function getPuppeteerConfig() {
-  const isProduction = process.env.NODE_ENV === 'production';
-  
-  const config = {
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu',
-    ],
-  };
+// ── Constants ───────────────────────────────────────────────────────────────
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 5000;
+const RECONNECT_DELAY_MS = 10000;
+const MAX_RECONNECT_ATTEMPTS = 10;
 
-  if (isProduction) {
-    try {
-      const chromium = require('@sparticuz/chromium');
-      config.executablePath = chromium.executablePath;
-      config.args = chromium.args.concat(config.args);
-      console.log('[WhatsApp] Using @sparticuz/chromium for production');
-    } catch (err) {
-      console.error('[WhatsApp] @sparticuz/chromium not found, falling back to bundled puppeteer');
-    }
-  }
-
-  return config;
-}
-
+// ── State ───────────────────────────────────────────────────────────────────
 let client = null;
 let isReady = false;
-let latestQR = null; // base64 data URL of the latest QR code
+let latestQR = null;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let isInitializing = false;
 
 // Lazy-load mongoose models to avoid circular deps at startup
 let WhatsAppMessage;
@@ -61,17 +40,117 @@ function getModels() {
   return { WhatsAppMessage, Question };
 }
 
-/**
- * Initialize the WhatsApp client.
- * Safe to call multiple times — will only create the client once.
- */
+// ── Platform-aware Puppeteer configuration ───────────────────────────────────
+function getPuppeteerConfig() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isMacOS = process.platform === 'darwin';
+
+  const config = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--disable-gpu',
+    ],
+  };
+
+  // Production (Render/Linux): use @sparticuz/chromium
+  if (isProduction) {
+    try {
+      const chromium = require('@sparticuz/chromium');
+      config.executablePath = chromium.executablePath;
+      config.args = chromium.args.concat(config.args);
+      console.log('[WhatsApp] Using @sparticuz/chromium for production');
+    } catch (err) {
+      console.error('[WhatsApp] @sparticuz/chromium not found, using bundled puppeteer');
+    }
+  }
+
+  // macOS: add flags that work on macOS (no --single-process, no --no-zygote)
+  if (isMacOS && !isProduction) {
+    config.args.push('--disable-extensions');
+    config.args.push('--disable-background-networking');
+  }
+
+  return config;
+}
+
+// ── Kill orphaned Chrome processes from previous sessions ────────────────────
+function killOrphanedChromeProcesses() {
+  try {
+    const result = execSync(
+      "ps aux | grep -i 'chrome.*whatsapp-session' | grep -v grep | awk '{print $2}'",
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
+
+    if (result) {
+      const pids = result.split('\n').filter(Boolean);
+      console.log(`[WhatsApp] Killing ${pids.length} orphaned Chrome process(es): ${pids.join(', ')}`);
+      pids.forEach((pid) => {
+        try {
+          process.kill(parseInt(pid), 'SIGKILL');
+        } catch (e) {
+          // Process may have already exited
+        }
+      });
+      // Wait for processes to fully die
+      execSync('sleep 1', { timeout: 3000 });
+    }
+  } catch (e) {
+    // No orphaned processes found — this is normal
+  }
+}
+
+// ── Clean stale lock files ───────────────────────────────────────────────────
+function cleanStaleLocks() {
+  const fs = require('fs');
+  const path = require('path');
+  const lockDir = path.join(__dirname, '..', 'whatsapp-session', 'session');
+  const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
+
+  lockFiles.forEach((file) => {
+    const filePath = path.join(lockDir, file);
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`[WhatsApp] Removed stale lock: ${file}`);
+      }
+    } catch (e) {
+      // Ignore — file may be locked by Chrome
+    }
+  });
+}
+
+// ── Initialize the WhatsApp client ───────────────────────────────────────────
 function initClient() {
-  if (client) return client;
+  if (client) {
+    console.log('[WhatsApp] Client already exists, skipping initialization');
+    return client;
+  }
+
+  if (isInitializing) {
+    console.log('[WhatsApp] Initialization already in progress, skipping');
+    return null;
+  }
+
+  isInitializing = true;
+  reconnectAttempts = 0;
+
+  // Clean up before starting
+  killOrphanedChromeProcesses();
+  cleanStaleLocks();
+
+  console.log('[WhatsApp] Initializing client...');
 
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: './whatsapp-session' }),
     puppeteer: getPuppeteerConfig(),
   });
+
+  // ── Event handlers ──────────────────────────────────────────────────────
 
   client.on('qr', async (qr) => {
     console.log('[WhatsApp] QR code received. Scan to authenticate.');
@@ -85,8 +164,10 @@ function initClient() {
 
   client.on('ready', () => {
     isReady = true;
+    isInitializing = false;
     latestQR = null;
-    console.log('[WhatsApp] Client is ready and authenticated!');
+    reconnectAttempts = 0;
+    console.log('[WhatsApp] ✅ Client is ready and authenticated!');
   });
 
   client.on('authenticated', () => {
@@ -94,21 +175,24 @@ function initClient() {
   });
 
   client.on('auth_failure', (msg) => {
-    console.error('[WhatsApp] Auth failure:', msg);
+    console.error('[WhatsApp] ❌ Auth failure:', msg);
     isReady = false;
+    isInitializing = false;
+    // Auth failures are not recoverable — need fresh QR scan
+    scheduleReconnect(true);
   });
 
   client.on('disconnected', (reason) => {
-    console.log('[WhatsApp] Disconnected:', reason);
+    console.log('[WhatsApp] ⚠️ Disconnected:', reason);
     isReady = false;
-    client = null;
+    isInitializing = false;
+    // Destroy old client before reconnecting
+    destroyClient().then(() => {
+      scheduleReconnect(false);
+    });
   });
 
-  // ── Listen for messages ─────────────────────────────────────────────────
-  // message_create fires for ALL messages (including ones from the same
-  // authenticated account), while 'message' only fires for others'. We use
-  // message_create so the bot can capture replies from its own account when
-  // the same WhatsApp number both runs the bot and replies in the group.
+  // ── Message listener ────────────────────────────────────────────────────
   client.on('message_create', async (msg) => {
     try {
       await handleMessage(msg);
@@ -117,18 +201,73 @@ function initClient() {
     }
   });
 
-  console.log('[WhatsApp] Initializing client...');
-  client.initialize().catch((err) => {
-    console.error('[WhatsApp] Initialization error:', err.message);
-  });
+  // ── Start initialization with retry ─────────────────────────────────────
+  initializeWithRetry(client, 0);
 
   return client;
 }
 
-/**
- * Handle an incoming WhatsApp message.
- * If it's a reply to one of our question posts, store it as a pending answer.
- */
+// ── Initialize with retry logic ──────────────────────────────────────────────
+async function initializeWithRetry(clientRef, attempt) {
+  try {
+    await clientRef.initialize();
+    // Success — isInitializing will be cleared by 'ready' or 'auth_failure' events
+  } catch (err) {
+    console.error(`[WhatsApp] Initialization error (attempt ${attempt + 1}/${MAX_RETRIES}):`, err.message);
+
+    if (attempt < MAX_RETRIES - 1) {
+      console.log(`[WhatsApp] Retrying in ${RETRY_DELAY_MS / 1000}s...`);
+      setTimeout(() => {
+        if (client === clientRef && !isReady) {
+          initializeWithRetry(clientRef, attempt + 1);
+        }
+      }, RETRY_DELAY_MS);
+    } else {
+      console.error('[WhatsApp] ❌ All initialization attempts failed.');
+      isInitializing = false;
+      // Clean up and try reconnecting later
+      await destroyClient();
+      scheduleReconnect(true);
+    }
+  }
+}
+
+// ── Schedule auto-reconnect ──────────────────────────────────────────────────
+function scheduleReconnect(instantRetry) {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error(`[WhatsApp] ❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Manual re-init needed.`);
+    return;
+  }
+
+  reconnectAttempts++;
+  const delay = instantRetry ? RECONNECT_DELAY_MS : RECONNECT_DELAY_MS * reconnectAttempts;
+
+  console.log(`[WhatsApp] Scheduling reconnect (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay / 1000}s...`);
+
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(() => {
+    console.log('[WhatsApp] Attempting reconnect...');
+    client = null;
+    isInitializing = false;
+    isReady = false;
+    initClient();
+  }, delay);
+}
+
+// ── Destroy client safely ────────────────────────────────────────────────────
+async function destroyClient() {
+  if (client) {
+    try {
+      await client.destroy();
+    } catch (e) {
+      // Ignore destroy errors
+    }
+    client = null;
+  }
+  isReady = false;
+}
+
+// ── Handle incoming WhatsApp message ─────────────────────────────────────────
 async function handleMessage(msg) {
   const { WhatsAppMessage, Question } = getModels();
   const groupId = process.env.WHATSAPP_GROUP_ID;
@@ -136,18 +275,14 @@ async function handleMessage(msg) {
   // Only process messages from the configured group
   if (!groupId || msg.from !== groupId) return;
 
-  // Check if this is a reply to one of our messages.
-  // We don't skip fromMe messages here because the bot may be
-  // authenticated through the same account that replies — the
-  // quoted-message check below is the real signal.
+  // Check if this is a reply to one of our messages
   const quotedMsg = msg.hasQuotedMsg ? await msg.getQuotedMessage() : null;
 
   if (!quotedMsg || !quotedMsg.fromMe) {
-    // Not a reply to our question post — skip
     return;
   }
 
-  // Try to extract the question ID from the quoted message body
+  // Extract question ID from the quoted message body
   const questionIdMatch = quotedMsg.body.match(/🆔\s*([a-f0-9]{24})/i);
   if (!questionIdMatch) return;
 
@@ -164,7 +299,6 @@ async function handleMessage(msg) {
 
   const answerText = msg.body.trim();
   if (answerText.length < 10) {
-    // Too short to be a meaningful answer — could send a reply prompt
     return;
   }
 
@@ -183,12 +317,10 @@ async function handleMessage(msg) {
   });
 
   await pendingAnswer.save();
-  console.log(`[WhatsApp] Pending answer received from ${senderName} for question ${questionId}`);
+  console.log(`[WhatsApp] ✅ Pending answer received from ${senderName} for question ${questionId}`);
 }
 
-/**
- * Send a formatted question message to the WhatsApp group.
- */
+// ── Send a formatted question to the WhatsApp group ──────────────────────────
 async function sendQuestionToGroup(question) {
   if (!isReady || !client) {
     console.log('[WhatsApp] Client not ready. Skipping notification.');
@@ -231,45 +363,36 @@ async function sendQuestionToGroup(question) {
 
   try {
     await client.sendMessage(groupId, message);
-    console.log(`[WhatsApp] Question sent to group: ${question.title}`);
+    console.log(`[WhatsApp] ✅ Question sent to group: ${question.title}`);
     return true;
   } catch (err) {
-    console.error('[WhatsApp] Error sending to group:', err.message);
+    console.error('[WhatsApp] ❌ Error sending to group:', err.message);
     return false;
   }
 }
 
-/**
- * Get the current connection status.
- */
+// ── Get the current connection status ────────────────────────────────────────
 function getStatus() {
   return {
     isReady,
     hasQR: !!latestQR,
     groupId: process.env.WHATSAPP_GROUP_ID || null,
+    reconnectAttempts,
+    isInitializing,
   };
 }
 
-/**
- * Get the latest QR code as a base64 data URL.
- */
+// ── Get the latest QR code as a base64 data URL ─────────────────────────────
 function getQR() {
   return latestQR;
 }
 
-/**
- * Disconnect the client gracefully.
- */
+// ── Disconnect the client gracefully ─────────────────────────────────────────
 async function disconnect() {
-  if (client) {
-    try {
-      await client.destroy();
-    } catch (e) {
-      // ignore
-    }
-    client = null;
-    isReady = false;
-  }
+  clearTimeout(reconnectTimer);
+  reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent auto-reconnect
+  await destroyClient();
+  console.log('[WhatsApp] Disconnected gracefully');
 }
 
 module.exports = {
