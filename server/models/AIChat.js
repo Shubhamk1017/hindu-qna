@@ -9,12 +9,26 @@ const aiChatSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  preview: {
+    type: String,
+    default: ''
+  },
   messages: [{
     role: {
       type: String,
       enum: ['user', 'assistant', 'system']
     },
     content: String,
+    sources: [{
+      reference: String,
+      translation: String,
+      url: String
+    }],
+    feedback: {
+      type: String,
+      enum: ['helpful', 'unhelpful', null],
+      default: null
+    },
     timestamp: {
       type: Date,
       default: Date.now

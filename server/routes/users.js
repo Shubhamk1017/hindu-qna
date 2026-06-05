@@ -8,20 +8,35 @@ const { auth } = require('../middleware/auth');
 // Get all users
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, limit = 20, sort = 'reputation', role } = req.query;
+    const { page = 1, limit = 20, sort = 'reputation', role, search } = req.query;
     
     let sortOption = { reputation: -1 };
     if (sort === 'newest') sortOption = { createdAt: -1 };
     if (sort === 'name') sortOption = { name: 1 };
+    if (sort === 'answers') sortOption = { answerCount: -1 };
 
     const filter = {};
     if (role) filter.role = role;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
 
-    const users = await User.find(filter)
+    let users = await User.find(filter)
       .select('-password')
       .sort(sortOption)
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
+
+    // Add virtual answerCount
+    users = users.map(u => {
+      const obj = u.toObject();
+      obj.answerCount = u.answers?.length || 0;
+      obj.questionCount = u.questions?.length || 0;
+      return obj;
+    });
 
     const total = await User.countDocuments(filter);
 

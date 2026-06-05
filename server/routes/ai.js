@@ -206,7 +206,11 @@ router.post('/chat', auth, async (req, res) => {
       });
     }
 
-    // Search community questions only
+    // Search scriptures for context (RAG)
+    const verses = await searchVerses(message, 3);
+    const verseContext = buildVerseContext(verses);
+
+    // Search community questions
     const relatedQuestions = await semanticSearch(message, 3);
 
     let communityContext = '';
@@ -217,12 +221,19 @@ router.post('/chat', auth, async (req, res) => {
       });
     }
 
+    // Build source info for frontend display
+    const sources = verses.map(v => ({
+      reference: verseLabel(v),
+      translation: v.translation ? v.translation.substring(0, 200) : '',
+      url: v.url || '',
+    }));
+
     chat.messages.push({ role: 'user', content: message });
 
     let assistantMessage;
 
     // Build messages
-    const fullSystemPrompt = systemPrompt + communityContext;
+    const fullSystemPrompt = systemPrompt + verseContext + communityContext;
     const messages = [
       { role: 'system', content: fullSystemPrompt },
       ...chat.messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
@@ -285,12 +296,27 @@ router.post('/chat', auth, async (req, res) => {
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-    chat.messages.push({ role: 'assistant', content: assistantMessage });
+    chat.messages.push({
+      role: 'assistant',
+      content: assistantMessage,
+      sources: sources || [],
+      feedback: null,
+    });
     chat.context = { relatedQuestions: relatedQuestions.map((q) => q._id) };
+
+    // Set preview from first user message if not set
+    if (!chat.preview) {
+      const firstUserMsg = chat.messages.find(m => m.role === 'user');
+      if (firstUserMsg) {
+        chat.preview = firstUserMsg.content.substring(0, 100);
+      }
+    }
+
     await chat.save();
 
     res.json({
       message: assistantMessage,
+      sources: sources || [],
       relatedQuestions,
       sessionId: chat.sessionId
     });
@@ -322,10 +348,37 @@ router.get('/history/:sessionId', auth, async (req, res) => {
 router.get('/sessions', auth, async (req, res) => {
   try {
     const sessions = await AIChat.find({ user: req.user._id })
-      .select('sessionId createdAt')
+      .select('sessionId createdAt preview')
       .sort({ createdAt: -1 });
 
     res.json(sessions);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ─── Feedback on message ─────────────────────────────────────────────────────
+router.post('/feedback/:sessionId/:messageIndex', auth, async (req, res) => {
+  try {
+    const { sessionId, messageIndex } = req.params;
+    const { feedback } = req.body; // 'helpful' or 'unhelpful'
+
+    const chat = await AIChat.findOne({ sessionId, user: req.user._id });
+    if (!chat) return res.status(404).json({ message: 'Session not found' });
+
+    const idx = parseInt(messageIndex);
+    if (idx < 0 || idx >= chat.messages.length) {
+      return res.status(400).json({ message: 'Invalid message index' });
+    }
+
+    if (chat.messages[idx].role !== 'assistant') {
+      return res.status(400).json({ message: 'Can only provide feedback on assistant messages' });
+    }
+
+    chat.messages[idx].feedback = feedback;
+    await chat.save();
+
+    res.json({ message: 'Feedback recorded' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

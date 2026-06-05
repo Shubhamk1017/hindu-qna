@@ -25,6 +25,15 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'scholar', 'guru', 'acharya', 'admin'],
     default: 'user'
   },
+  bio: {
+    type: String,
+    default: '',
+    maxlength: 500
+  },
+  expertise: [{
+    type: String,
+    trim: true
+  }],
   phone: {
     type: String,
     default: ''

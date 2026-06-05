@@ -4,6 +4,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { FiBook, FiAlertCircle, FiEye, FiEdit3, FiLoader, FiHelpCircle, FiChevronRight } from 'react-icons/fi';
+import ScriptureInput from '../components/ScriptureAutocomplete';
 import toast from 'react-hot-toast';
 
 function suggestTags(title, body) {
@@ -165,7 +166,7 @@ const AskQuestion = () => {
         </div>
 
         {/* Body */}
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="animate-fade-in-up relative z-10" style={{ animationDelay: '0.2s' }}>
           <div className="flex items-center justify-between mb-1">
             <label className="block text-[15px] font-semibold text-gray-900">
               Question Details
@@ -193,15 +194,16 @@ const AskQuestion = () => {
               <MarkdownRenderer content={body} />
             </div>
           ) : (
-            <textarea
+            <ScriptureInput
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onFocus={() => setFocusedField('body')}
-              onBlur={() => setFocusedField(null)}
+              onChange={(val) => setBody(typeof val === 'string' ? val : val.target?.value || val)}
+              placeholder="Describe your question in detail... Include relevant context, what you've already read, and what specifically you'd like to know."
+              rows={6}
               className={`w-full border-2 rounded-xl px-5 py-4 bg-white text-[15px] outline-none resize-y min-h-[180px] leading-relaxed transition-all duration-200 placeholder:text-gray-300 focus:ring-4 focus:ring-brand/5 ${
                 focusedField === 'body' ? 'border-brand' : 'border-gray-200'
               }`}
-              placeholder="Describe your question in detail... Include relevant context, what you've already read, and what specifically you'd like to know."
+              onFocus={() => setFocusedField('body')}
+              onBlur={() => setFocusedField(null)}
             />
           )}
         </div>

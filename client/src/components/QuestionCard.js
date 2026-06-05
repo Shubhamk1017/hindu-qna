@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { FiChevronUp, FiMessageSquare, FiEye, FiClock, FiBookmark, FiCheck } from 'react-icons/fi';
+import { FiChevronUp, FiMessageSquare, FiEye, FiClock, FiBookmark, FiCheck, FiAward } from 'react-icons/fi';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -99,6 +99,11 @@ const QuestionCard = ({ question, compact = false, bookmarked = false, onToggleB
             {hasAccepted && (
               <span className="text-[10px] font-semibold text-green-600 bg-green-50/80 border border-green-100 px-2 py-0.5 rounded-full tracking-wide uppercase animate-pulse-glow" style={{ animationDuration: '3s' }}>
                 ✓ Accepted
+              </span>
+            )}
+            {question.guruVerifiedCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50/80 border border-amber-200/60 px-2 py-0.5 rounded-full uppercase">
+                <FiAward size={10} /> Guru Verified
               </span>
             )}
             {question.isBounty && (

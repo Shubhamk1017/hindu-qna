@@ -80,6 +80,7 @@ app.use('/api/bounties', require('./routes/bounties'));
 app.use('/api/activity', require('./routes/activity'));
 app.use('/api/bot', require('./routes/bot'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
+app.use('/api/verses', require('./routes/verses'));
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -4,6 +4,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { FiArrowUp, FiArrowDown, FiCheck, FiMessageSquare, FiBookmark, FiClock, FiEye, FiUser, FiSend, FiTag, FiLink, FiChevronDown, FiChevronUp, FiAward } from 'react-icons/fi';
+import ScriptureInput from '../components/ScriptureAutocomplete';
 import toast from 'react-hot-toast';
 
 const VALID_TAGS = ['bhagavad-gita', 'srimad-bhagavatam', 'dharma', 'karma', 'yoga', 'meditation', 'vedanta', 'worship', 'mantras', 'philosophy', 'festivals', 'deities'];
@@ -31,9 +32,15 @@ const Badge = ({ children, variant = 'default' }) => {
     aiVerified: 'bg-green-50 text-green-700 border-green-200',
     bounty: 'bg-yellow-50 text-yellow-700 border-yellow-200',
     default: 'bg-gray-50 text-gray-600 border-gray-200',
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-full border ${variants[variant]}`}>
+  };    const tooltipText = variant === 'guru' && children?.length > 1
+      ? children.find(c => c?.type === 'span')?.props?.children
+      : null;
+    const hasTooltip = !!tooltipText;
+    return (
+    <span
+      className={`inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-full border ${variants[variant]} ${hasTooltip ? 'relative cursor-help' : ''}`}
+      title={tooltipText || undefined}
+    >
       {children}
     </span>
   );
@@ -333,13 +340,13 @@ const QuestionDetail = () => {
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <input
-                    type="text"
+                  <ScriptureInput
                     value={commentBody}
-                    onChange={(e) => setCommentBody(e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
+                    onChange={(val) => setCommentBody(typeof val === 'string' ? val : val.target?.value || val)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(question._id, 'question'); } }}
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all bg-white"
                     placeholder="Write a comment..."
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment(question._id, 'question')}
+                    rows={1}
                   />
                   <button onClick={() => handleAddComment(question._id, 'question')} className="bg-brand text-white px-4 py-2 rounded-xl text-[14px] font-medium hover:bg-brand-500 transition-all hover:shadow-md flex items-center gap-1.5">
                     <FiSend size={12} /> Post
@@ -414,7 +421,12 @@ const QuestionDetail = () => {
                           <Badge variant="accepted"><FiCheck size={10} /> Accepted</Badge>
                         )}
                         {answer.isVerifiedByGuru && (
-                          <Badge variant="guru"><FiAward size={10} /> Guru Verified</Badge>
+                          <Badge variant="guru">
+                            <FiAward size={10} /> Guru Verified
+                            {answer.verifiedBy?.name && (
+                              <span className="sr-only">Verified by {answer.verifiedBy.name}{answer.verifiedAt ? ` on ${new Date(answer.verifiedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</span>
+                            )}
+                          </Badge>
                         )}
                         {answer.isAIGenerated && (
                           <Badge variant={answer.isVerifiedByAdmin ? 'aiVerified' : 'ai'}>
@@ -440,14 +452,36 @@ const QuestionDetail = () => {
                       </button>
                     )}
 
-                    {/* Verification Note */}
-                    {answer.isVerifiedByGuru && answer.verificationNote && (
+                    {/* Guru Verified Banner */}
+                    {answer.isVerifiedByGuru && (
                       <div className="bg-gradient-to-br from-amber-50 to-white border border-amber-200 rounded-xl p-4 mb-4">
-                        <p className="text-[13px] font-semibold text-amber-800 mb-1 flex items-center gap-1">
-                          <FiAward size={12} /> Verification Note
-                        </p>
-                        <p className="text-[14px] text-amber-700 leading-relaxed">{answer.verificationNote}</p>
-                        <p className="text-[12px] text-amber-500 mt-1.5">Verified by {answer.verifiedBy?.name}</p>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0">
+                            <FiAward size={14} className="text-amber-700" />
+                          </div>
+                          <div>
+                            <p className="text-[13px] font-semibold text-amber-800 flex items-center gap-1.5">
+                              Guru Verified
+                              <span className="text-[11px] font-normal text-amber-500">
+                                by <span className="font-medium">{answer.verifiedBy?.name || 'a verified guru'}</span>
+                                {answer.verifiedAt && <> · {new Date(answer.verifiedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>}
+                              </span>
+                            </p>
+                            {answer.verifiedBy?.role && ['guru', 'acharya'].includes(answer.verifiedBy.role) && (
+                              <span className="text-[11px] font-semibold text-amber-600 bg-amber-100/50 px-1.5 py-0.5 rounded-full capitalize">
+                                {answer.verifiedBy.role}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {answer.verificationNote && (
+                          <>
+                            <div className="w-full h-px bg-amber-200/50 my-2"></div>
+                            <p className="text-[14px] text-amber-700 leading-relaxed">
+                              "{answer.verificationNote}"
+                            </p>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -502,19 +536,19 @@ const QuestionDetail = () => {
                             {comment.body} <span className="text-brand font-medium">— {comment.author?.name}</span>
                           </div>
                         ))}
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={commentBody}
-                            onChange={(e) => setCommentBody(e.target.value)}
-                            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all"
-                            placeholder="Write a comment..."
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment(answer._id, 'answer')}
-                          />
-                          <button onClick={() => handleAddComment(answer._id, 'answer')} className="bg-brand text-white px-4 py-2 rounded-xl text-[14px] font-medium hover:bg-brand-500 transition-all hover:shadow-md flex items-center gap-1.5">
-                            <FiSend size={12} /> Post
-                          </button>
-                        </div>
+                <div className="flex gap-2">
+                  <ScriptureInput
+                    value={commentBody}
+                    onChange={(val) => setCommentBody(typeof val === 'string' ? val : val.target?.value || val)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddComment(answer._id, 'answer'); } }}
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-[14px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all bg-white"
+                    placeholder="Write a comment..."
+                    rows={1}
+                  />
+                  <button onClick={() => handleAddComment(answer._id, 'answer')} className="bg-brand text-white px-4 py-2 rounded-xl text-[14px] font-medium hover:bg-brand-500 transition-all hover:shadow-md flex items-center gap-1.5">
+                    <FiSend size={12} /> Post
+                  </button>
+                </div>
                       </div>
                     )}
                   </div>
@@ -541,12 +575,12 @@ const QuestionDetail = () => {
           </div>
           <form onSubmit={handleSubmitAnswer}>
             <div className="relative">
-              <textarea
+              <ScriptureInput
                 value={answerBody}
-                onChange={(e) => setAnswerBody(e.target.value)}
+                onChange={(val) => setAnswerBody(typeof val === 'string' ? val : val.target?.value || val)}
                 className="w-full border border-gray-200 rounded-xl px-5 py-4 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all duration-200 resize-y min-h-[180px] leading-relaxed bg-cream/30"
-                placeholder="Write your answer here... You can use Markdown for formatting."
-                required
+                placeholder="Write your answer here... You can use Markdown for formatting. Type @ to reference scriptures."
+                rows={6}
               />
               <div className="absolute bottom-3 right-3 text-[12px] text-gray-400">
                 Markdown supported

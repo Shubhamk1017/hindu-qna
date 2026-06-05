@@ -195,6 +195,17 @@ body {
   animation: gradientShift 8s ease infinite;
 }
 
+/* ── Dropdown in (instant, fully opaque) ──────────────── */
+
+@keyframes dropdownIn {
+  from { transform: scale(0.98) translateY(-2px); }
+  to { transform: scale(1) translateY(0); }
+}
+
+.animate-dropdown-in {
+  animation: dropdownIn 0.12s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* ── Scale in ──────────────────────────────────────────────── */
 
 .animate-scale-in {

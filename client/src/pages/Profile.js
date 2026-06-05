@@ -328,10 +328,11 @@ const Profile = () => {
           </div>
 
           {/* Stats Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-8">
             <ProfileStat icon={FiMessageSquare} label="Questions" value={stats.totalQuestions || 0} color="bg-brand-50 text-brand" delay={0} />
             <ProfileStat icon={FiEdit} label="Answers" value={stats.totalAnswers || 0} color="bg-purple-50 text-purple-600" delay={60} />
             <ProfileStat icon={FiStar} label="Upvotes" value={stats.totalUpvotes || 0} color="bg-amber-50 text-amber-600" delay={120} />
+            <ProfileStat icon={FiShield} label="Verified" value={stats.verifiedAnswers || 0} color="bg-amber-50 text-amber-600" delay={140} />
             <ProfileStat icon={FiAward} label="Badges" value={stats.totalBadges || 0} color="bg-emerald-50 text-emerald-600" delay={180} />
           </div>
         </div>
