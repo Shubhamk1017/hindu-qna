@@ -81,6 +81,7 @@ app.use('/api/activity', require('./routes/activity'));
 app.use('/api/bot', require('./routes/bot'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
 app.use('/api/verses', require('./routes/verses'));
+app.use('/api/debates', require('./routes/debates'));
 
 // Health check
 app.get('/api/health', (req, res) => {

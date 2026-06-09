@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { FiHome, FiHelpCircle, FiUsers, FiBook, FiPlus, FiLogOut, FiMenu, FiX, FiShield, FiMessageSquare, FiSun, FiMoon, FiCommand } from 'react-icons/fi';
+import { FiHome, FiHelpCircle, FiUsers, FiBook, FiPlus, FiLogOut, FiMenu, FiX, FiShield, FiMessageSquare, FiSun, FiMoon, FiCommand, FiMessageCircle } from 'react-icons/fi';
 
 const Navbar = ({ onOpenPalette }) => {
   const { user, logout } = useAuth();
@@ -23,6 +23,7 @@ const Navbar = ({ onOpenPalette }) => {
     { path: '/questions', label: 'Questions', icon: FiHelpCircle },
     { path: '/users', label: 'Experts', icon: FiUsers },
     { path: '/tags', label: 'Tags', icon: FiBook },
+    { path: '/debates', label: 'Debates', icon: FiMessageCircle },
     { path: '/chat', label: 'AI Chat', icon: FiMessageSquare },
   ];
 

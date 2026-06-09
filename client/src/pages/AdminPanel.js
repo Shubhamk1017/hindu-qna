@@ -459,10 +459,64 @@ const AdminPanel = () => {
           setWhatsappQR(qrRes.data.qr);
         }
       }, 3000);
-    } catch {
-      toast.error('Error initializing WhatsApp client');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Error initializing WhatsApp client';
+      toast.error(msg);
     }
   };
+
+  const handleResetWhatsApp = () => {
+    setConfirmModal({
+      open: true,
+      title: 'Reset WhatsApp Connection',
+      message: 'This will completely wipe the current WhatsApp session. The connected phone will be disconnected and you will need to scan a new QR code. Are you sure?',
+      danger: true,
+      confirmLabel: 'Reset Connection',
+      onConfirm: async () => {
+        setConfirmModal({ open: false });
+        try {
+          await api.post('/whatsapp/reset');
+          toast.success('WhatsApp client resetting...');
+          setWhatsappStatus(null);
+          setWhatsappQR(null);
+          setTimeout(async () => {
+            const statusRes = await api.get('/whatsapp/status').catch(() => ({ data: {} }));
+            setWhatsappStatus(statusRes.data);
+            if (statusRes.data.hasQR) {
+              const qrRes = await api.get('/whatsapp/qr').catch(() => ({ data: {} }));
+              setWhatsappQR(qrRes.data.qr);
+            }
+          }, 5000);
+        } catch (err) {
+          const msg = err?.response?.data?.message || 'Error resetting WhatsApp client';
+          toast.error(msg);
+        }
+      },
+    });
+  };
+
+  // Auto-poll QR code when WhatsApp tab is active and not yet connected
+  useEffect(() => {
+    if (activeTab !== 'whatsapp') return;
+    if (whatsappStatus?.isReady) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const statusRes = await api.get('/whatsapp/status').catch(() => ({ data: {} }));
+        setWhatsappStatus(statusRes.data);
+        if (statusRes.data.hasQR) {
+          const qrRes = await api.get('/whatsapp/qr').catch(() => ({ data: {} }));
+          setWhatsappQR(qrRes.data.qr);
+        } else {
+          setWhatsappQR(null);
+        }
+      } catch {
+        // Silently ignore polling errors
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [activeTab, whatsappStatus?.isReady]);
 
   const handleApproveGuru = async (userId) => {
     try {
@@ -1035,6 +1089,13 @@ const AdminPanel = () => {
                         <FiSend size={13} /> Initialize
                       </button>
                     )}
+                    <button
+                      onClick={handleResetWhatsApp}
+                      className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg shadow-sm hover:shadow transition-all"
+                      title="Force wipe the current session and restart"
+                    >
+                      <FiAlertCircle size={13} /> Reset Connection
+                    </button>
                   </div>
                 </div>
                 {/* QR Code display */}
@@ -1042,6 +1103,12 @@ const AdminPanel = () => {
                   <div className="mt-4 p-4 bg-white rounded-xl border border-gray-100 inline-block">
                     <p className="text-[12px] text-gray-400 mb-2 text-center">Scan this QR code with WhatsApp on your phone</p>
                     <img src={whatsappQR} alt="WhatsApp QR Code" className="w-56 h-56 mx-auto" />
+                    <p className="text-[11px] text-gray-300 mt-2 text-center animate-pulse">QR auto-refreshes every few seconds</p>
+                  </div>
+                )}
+                {!whatsappQR && !whatsappStatus?.isReady && whatsappStatus?.isInitializing && (
+                  <div className="mt-4 p-4 bg-white rounded-xl border border-gray-100 inline-block">
+                    <p className="text-[13px] text-gray-400 text-center">⏳ Waiting for QR code...</p>
                   </div>
                 )}
               </div>

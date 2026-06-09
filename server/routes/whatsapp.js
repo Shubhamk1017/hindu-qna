@@ -22,14 +22,31 @@ router.get('/qr', adminAuth, (req, res) => {
   res.json({ qr });
 });
 
-// ─── Initialize WhatsApp client (admin only) ─────────────────────────────────
+// ─── Initialize WhatsApp client (admin only) ─────────────────────────────────────────
 router.post('/init', adminAuth, (req, res) => {
   try {
     whatsappService.initClient();
     res.json({ message: 'WhatsApp client initialization started. Check /status for readiness.' });
   } catch (err) {
     console.error('[WhatsApp] Init error:', err.message);
+    if (err.message.includes('Please wait')) {
+      return res.status(429).json({ message: err.message });
+    }
     res.status(500).json({ message: 'Failed to initialize WhatsApp client' });
+  }
+});
+
+// ─── Reset WhatsApp client (admin only) ────────────────────────────────────────────
+router.post('/reset', adminAuth, async (req, res) => {
+  try {
+    await whatsappService.resetClient();
+    res.json({ message: 'WhatsApp client reset initiated. Check /status for readiness.' });
+  } catch (err) {
+    console.error('[WhatsApp] Reset error:', err.message);
+    if (err.message.includes('Please wait')) {
+      return res.status(429).json({ message: err.message });
+    }
+    res.status(500).json({ message: 'Failed to reset WhatsApp client' });
   }
 });
 
@@ -235,9 +252,13 @@ router.post('/send-question/:questionId', adminAuth, async (req, res) => {
 
     const sent = await whatsappService.sendQuestionToGroup(question);
     if (sent) {
-      res.json({ message: 'Question sent to WhatsApp group' });
+      res.json({ message: 'Question sent to WhatsApp group', notificationSent: true });
     } else {
-      res.status(503).json({ message: 'WhatsApp client not ready or group not configured' });
+      // Question exists but WhatsApp notification failed — inform admin clearly
+      res.json({
+        message: 'Question exists but WhatsApp notification could not be sent. The bot may be disconnected or group not configured.',
+        notificationSent: false,
+      });
     }
   } catch (error) {
     console.error('[WhatsApp] Error sending question:', error);

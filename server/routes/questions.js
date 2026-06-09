@@ -182,7 +182,7 @@ async function generateAIAnswer(questionId, title, body) {
     // Create AI answer
     const aiAnswer = new Answer({
       body: aiMessage,
-      author: '6a1a933ab71040abda4679d1', // System/AI user
+      author: process.env.AI_USER_ID || '6a1a933ab71040abda4679d1', // System/AI user — set AI_USER_ID in .env
       question: questionId,
       isAIGenerated: true,
       aiModel: 'groq-llama-3.1-8b',

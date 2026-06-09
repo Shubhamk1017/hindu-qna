@@ -21,14 +21,19 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 const RECONNECT_DELAY_MS = 10000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+const QR_EXPIRY_MS = 20000; // WhatsApp QR codes expire roughly every 20s
+const MIN_ANSWER_LENGTH = parseInt(process.env.MIN_ANSWER_LENGTH) || 10;
+const RESET_COOLDOWN_MS = 10000; // 10s cooldown between reset/init calls
 
 // ── State ───────────────────────────────────────────────────────────────────
 let client = null;
 let isReady = false;
 let latestQR = null;
+let qrGeneratedAt = null;
 let reconnectAttempts = 0;
 let reconnectTimer = null;
 let isInitializing = false;
+let lastResetTime = 0;
 
 // Lazy-load mongoose models to avoid circular deps at startup
 let WhatsAppMessage;
@@ -70,10 +75,9 @@ function getPuppeteerConfig() {
   }
 
   // macOS: add flags that work on macOS (no --single-process, no --no-zygote)
-  if (isMacOS && !isProduction) {
-    config.args.push('--disable-extensions');
-    config.args.push('--disable-background-networking');
-  }
+  // Removed --disable-background-networking and --disable-extensions
+  // as they interfere with whatsapp web login handshake.
+
 
   return config;
 }
@@ -156,6 +160,7 @@ function initClient() {
     console.log('[WhatsApp] QR code received. Scan to authenticate.');
     try {
       latestQR = await QRCode.toDataURL(qr);
+      qrGeneratedAt = Date.now();
       console.log('[WhatsApp] QR data URL generated (scan via /api/whatsapp/qr endpoint)');
     } catch (err) {
       console.error('[WhatsApp] QR generation error:', err.message);
@@ -166,6 +171,7 @@ function initClient() {
     isReady = true;
     isInitializing = false;
     latestQR = null;
+    qrGeneratedAt = null;
     reconnectAttempts = 0;
     console.log('[WhatsApp] ✅ Client is ready and authenticated!');
   });
@@ -178,6 +184,7 @@ function initClient() {
     console.error('[WhatsApp] ❌ Auth failure:', msg);
     isReady = false;
     isInitializing = false;
+    clearSession(); // WIPE session so it generates a new QR code
     // Auth failures are not recoverable — need fresh QR scan
     scheduleReconnect(true);
   });
@@ -267,6 +274,39 @@ async function destroyClient() {
   isReady = false;
 }
 
+// ── Completely wipe the session directory ────────────────────────────────────
+function clearSession() {
+  const fs = require('fs');
+  const path = require('path');
+  const sessionDir = path.join(__dirname, '..', 'whatsapp-session');
+  try {
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+      console.log('[WhatsApp] 🗑️  Wiped session directory completely');
+    }
+  } catch (e) {
+    console.error('[WhatsApp] ⚠️ Failed to clear session directory:', e.message);
+  }
+}
+
+// ── Force manual reset ───────────────────────────────────────────────────────
+async function resetClient() {
+  const now = Date.now();
+  if (now - lastResetTime < RESET_COOLDOWN_MS) {
+    const waitSec = Math.ceil((RESET_COOLDOWN_MS - (now - lastResetTime)) / 1000);
+    throw new Error(`Please wait ${waitSec}s before resetting again.`);
+  }
+  lastResetTime = now;
+
+  console.log('[WhatsApp] 🔄 Manual reset requested. Destroying client and clearing session...');
+  clearTimeout(reconnectTimer);
+  reconnectAttempts = 0;
+  isInitializing = false;
+  await destroyClient();
+  clearSession();
+  initClient();
+}
+
 // ── Handle incoming WhatsApp message ─────────────────────────────────────────
 async function handleMessage(msg) {
   const { WhatsAppMessage, Question } = getModels();
@@ -298,7 +338,8 @@ async function handleMessage(msg) {
   const senderPhone = contact.number || msg.author || '';
 
   const answerText = msg.body.trim();
-  if (answerText.length < 10) {
+  if (answerText.length < MIN_ANSWER_LENGTH) {
+    console.log(`[WhatsApp] ⚠️ Dropped short reply from ${senderName} (${answerText.length} chars, min ${MIN_ANSWER_LENGTH}): "${answerText.substring(0, 50)}"`);
     return;
   }
 
@@ -373,9 +414,14 @@ async function sendQuestionToGroup(question) {
 
 // ── Get the current connection status ────────────────────────────────────────
 function getStatus() {
+  // If QR is expired, clear it so frontend knows to wait for the next one
+  const qrExpired = qrGeneratedAt && (Date.now() - qrGeneratedAt > QR_EXPIRY_MS);
+
   return {
     isReady,
-    hasQR: !!latestQR,
+    hasQR: !!latestQR && !qrExpired,
+    qrGeneratedAt,
+    qrExpiresIn: qrGeneratedAt ? Math.max(0, QR_EXPIRY_MS - (Date.now() - qrGeneratedAt)) : null,
     groupId: process.env.WHATSAPP_GROUP_ID || null,
     reconnectAttempts,
     isInitializing,
@@ -401,4 +447,5 @@ module.exports = {
   getStatus,
   getQR,
   disconnect,
+  resetClient,
 };

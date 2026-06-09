@@ -22,6 +22,9 @@ import AIChat from './pages/AIChat';
 import ReviewQueues from './pages/ReviewQueues';
 import Bounties from './pages/Bounties';
 import AuthCallback from './pages/AuthCallback';
+import Debates from './pages/Debates';
+import DebateDetail from './pages/DebateDetail';
+import NotFound from './pages/NotFound';
 
 function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -62,6 +65,9 @@ function App() {
                   <Route path="/chat" element={<AIChat />} />
                   <Route path="/reviews" element={<ReviewQueues />} />
                   <Route path="/bounties" element={<Bounties />} />
+                  <Route path="/debates" element={<Debates />} />
+                  <Route path="/debates/:id" element={<DebateDetail />} />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
               <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
